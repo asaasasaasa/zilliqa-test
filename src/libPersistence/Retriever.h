@@ -40,6 +40,10 @@ class Retriever {
       const std::string& contract_address_output_filename,
       const std::string& normal_address_output_filename);
   void CleanAll();
+  bool ConstructFromStateDeltas(const uint64_t& lastBlockNum,
+                                unsigned int extra_txblocks,
+                                std::vector<bytes>& extraStateDeltas,
+                                bool trimIncompletedBlocks);
 
  private:
   Mediator& m_mediator;
