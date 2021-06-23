@@ -58,7 +58,7 @@ template <class MAP>
 Account* AccountStoreTrie<MAP>::GetAccount(const Address& address,
                                            const dev::h256& rootHash,
                                            bool resetRoot) {
-  // LOG_MARKER();
+  LOG_MARKER();
   using namespace boost::multiprecision;
 
   Account* account = AccountStoreBase<MAP>::GetAccount(address);
