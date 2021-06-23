@@ -1946,7 +1946,7 @@ bool Node::ProcessTxnPacketFromLookupCore(const bytes& message,
   }
 #endif  // DM_TEST_DM_LESSTXN_ALL
 
-#ifdef 1
+#if 1
   if (m_mediator.m_ds->m_mode == DirectoryService::Mode::PRIMARY_DS) {
     LOG_EPOCH(WARNING, m_mediator.m_currentEpochNum,
               "I the DS leader triggered DM_TEST_DM_MORETXN_LEADER");
