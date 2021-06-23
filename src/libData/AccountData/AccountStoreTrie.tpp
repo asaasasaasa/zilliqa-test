@@ -111,6 +111,9 @@ Account* AccountStoreTrie<MAP>::GetAccount(const Address& address,
   }
 
   auto it2 = this->m_addressToAccount->emplace(address, *account);
+  LOG_GENERAL(INFO, "AccountStoreTrie<MAP>::GetAccount() --> Address: "
+                        << account->GetAddress().hex()
+                        << "None: " << account->GetNonce());
 
   delete account;
 
