@@ -27,12 +27,17 @@ Account* AccountStoreTemp::GetAccount(const Address& address) {
   Account* account =
       AccountStoreBase<map<Address, Account>>::GetAccount(address);
   if (account != nullptr) {
+    LOG_GENERAL(INFO, "From AccountStoreBase -> Address: "
+                          << address.hex() << "Nonce: " << account->GetNonce());
     return account;
   }
 
   account = m_parent.GetAccount(address);
   if (account) {
     Account newaccount(*account);
+    LOG_GENERAL(INFO, "From AccountStoreTrie -> Address: "
+                          << address.hex()
+                          << "Nonce: " << newaccount.GetNonce());
     m_addressToAccount->insert(make_pair(address, newaccount));
     return &(m_addressToAccount->find(address))->second;
   }
