@@ -694,6 +694,11 @@ bool ProtobufToAccountDelta(const ProtoAccount& protoAccount, Account& account,
                               : 0 - accbase.GetBalance().convert_to<int256_t>();
   account.ChangeBalance(balanceDelta);
 
+  LOG_GENERAL(INFO, "[DM7]"
+                        << " " << addr.hex() << " " << accbase.GetNonce());
+  LOG_GENERAL(INFO, "[DM7]"
+                        << "revertible: " << revertible);
+
   if (!account.IncreaseNonceBy(accbase.GetNonce())) {
     LOG_GENERAL(WARNING, "IncreaseNonceBy failed");
     return false;
@@ -2795,6 +2800,9 @@ bool Messenger::GetAccountStoreDelta(const bytes& src,
                       << address.hex());
       return false;
     }
+
+    LOG_GENERAL(INFO, "[DM7]"
+                          << " " << address.hex() << " " << account.GetNonce());
 
     accountStoreTemp.AddAccountDuringDeserialization(address, account);
   }
