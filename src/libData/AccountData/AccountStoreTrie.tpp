@@ -53,6 +53,7 @@ bool AccountStoreTrie<DB, MAP>::Serialize(bytes& dst,
 template <class DB, class MAP>
 Account* AccountStoreTrie<DB, MAP>::GetAccount(const Address& address) {
   // LOG_MARKER();
+  LOG_MARKER();
   using namespace boost::multiprecision;
 
   Account* account = AccountStoreBase<MAP>::GetAccount(address);
@@ -85,6 +86,8 @@ Account* AccountStoreTrie<DB, MAP>::GetAccount(const Address& address) {
   }
 
   auto it2 = this->m_addressToAccount->emplace(address, *account);
+  LOG_GENERAL(INFO, "AccountStoreTrie<MAP>::GetAccount() --> Address: "
+                        << address.hex() << "Nonce: " << account->GetNonce());
 
   delete account;
 

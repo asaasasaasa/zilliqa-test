@@ -168,7 +168,7 @@ class AccountStore
   }
 
   /// get the nonce of an account in AccountStoreTemp
-  uint128_t GetNonceTemp(const Address& address);
+  uint128_t GetNonceTemp(const Address& address, bool log = false);
 
   /// Update the states balance due to coinbase changes to the AccountStoreTemp
   bool UpdateCoinbaseTemp(const Address& rewardee,

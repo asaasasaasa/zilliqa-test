@@ -432,13 +432,20 @@ bool AccountStore::UpdateCoinbaseTemp(const Address& rewardee,
   // Should the nonce increase ??
 }
 
-uint128_t AccountStore::GetNonceTemp(const Address& address) {
+uint128_t AccountStore::GetNonceTemp(const Address& address, bool log) {
+  LOG_MARKER();
   lock_guard<mutex> g(m_mutexDelta);
 
   if (m_accountStoreTemp->GetAddressToAccount()->find(address) !=
       m_accountStoreTemp->GetAddressToAccount()->end()) {
+    if (log) {
+      LOG_GENERAL(INFO, "m_accountStoreTemp->GetNonce() called!");
+    }
     return m_accountStoreTemp->GetNonce(address);
   } else {
+    if (log) {
+      LOG_GENERAL(INFO, "Accounstore::GetNonce() called!");
+    }
     return this->GetNonce(address);
   }
 }
@@ -488,6 +495,8 @@ void AccountStore::RevertCommitTemp() {
 
   // Revert changed
   for (auto const& entry : m_addressToAccountRevChanged) {
+    LOG_GENERAL(INFO, "Address: " << entry.first.hex()
+                                  << "Nonce: " << entry.second.GetNonce());
     (*m_addressToAccount)[entry.first] = entry.second;
     UpdateStateTrie(entry.first, entry.second);
   }
