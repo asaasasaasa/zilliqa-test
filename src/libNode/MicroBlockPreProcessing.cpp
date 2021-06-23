@@ -476,7 +476,7 @@ void Node::ProcessTransactionWhenShardLeader(
       // check nonce, if nonce larger than expected, put it into
       // m_addrNonceTxnMap
       if (t.GetNonce() >
-          AccountStore::GetInstance().GetNonceTemp(senderAddr) + 1) {
+          AccountStore::GetInstance().GetNonceTemp(senderAddr, true) + 1) {
         LOG_GENERAL(
             INFO, "High nonce: "
                       << t.GetNonce() << " cur sender " << senderAddr.hex()
