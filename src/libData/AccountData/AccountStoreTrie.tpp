@@ -55,6 +55,11 @@ bool AccountStoreTrie<MAP>::Serialize(bytes& dst, unsigned int offset) {
 }
 
 template <class MAP>
+Account* AccountStoreTrie<MAP>::GetAccount(const Address& address) {
+  return this->GetAccount(address, dev::h256(), true);
+}
+
+template <class MAP>
 Account* AccountStoreTrie<MAP>::GetAccount(const Address& address,
                                            const dev::h256& rootHash,
                                            bool resetRoot) {

@@ -44,9 +44,10 @@ class AccountStoreTrie : public AccountStoreSC<MAP> {
 
   bool Serialize(bytes& dst, unsigned int offset);
 
-  Account* GetAccount(const Address& address,
-                      const dev::h256& rootHash = dev::h256(),
-                      bool resetRoot = true);
+  Account* GetAccount(const Address& address) override;
+
+  Account* GetAccount(const Address& address, const dev::h256& rootHash,
+                      bool resetRoot);
 
   bool GetProof(const Address& address, const dev::h256& rootHash,
                 Account& account, std::set<std::string>& nodes);
