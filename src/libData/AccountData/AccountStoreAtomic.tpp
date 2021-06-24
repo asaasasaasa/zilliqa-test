@@ -32,6 +32,9 @@ Account* AccountStoreAtomic<MAP>::GetAccount(const Address& address) {
   account = m_parent.GetAccount(address);
   if (account) {
     // LOG_GENERAL(INFO, "Got From Parent");
+    LOG_GENERAL(INFO, "[DM7]"
+                          << "Added " << address.hex() << " "
+                          << account->GetNonce());
     m_addressToAccount->insert(std::make_pair(address, *account));
     return &(m_addressToAccount->find(address))->second;
   }

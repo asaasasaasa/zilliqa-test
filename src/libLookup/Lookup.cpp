@@ -262,7 +262,8 @@ void Lookup::SetLookupNodes() {
     unsigned int indexEnd =
         (myLookupIndex + 1) * (GENESIS_WALLETS.size() / NUM_DISPATCHERS);
 
-    for (unsigned int i = indexBeg; i < indexMid; i++) {
+    for (unsigned int i = indexBeg; i < indexMid && i < GENESIS_WALLETS.size();
+         i++) {
       const auto& addrStr = GENESIS_WALLETS.at(i);
       bytes addrBytes;
       if (!DataConversion::HexStrToUint8Vec(addrStr, addrBytes)) {
@@ -271,7 +272,8 @@ void Lookup::SetLookupNodes() {
       m_myGenesisAccounts1.emplace_back(Address(addrBytes));
     }
 
-    for (unsigned int i = indexMid; i < indexEnd; i++) {
+    for (unsigned int i = indexMid; i < indexEnd && i < GENESIS_WALLETS.size();
+         i++) {
       const auto& addrStr = GENESIS_WALLETS.at(i);
       bytes addrBytes;
       if (!DataConversion::HexStrToUint8Vec(addrStr, addrBytes)) {
@@ -286,7 +288,8 @@ void Lookup::SetLookupNodes() {
     indexEnd =
         (myLookupIndex + 1) * (DS_GENESIS_WALLETS.size() / NUM_DISPATCHERS);
 
-    for (unsigned int i = indexBeg; i < indexMid; i++) {
+    for (unsigned int i = indexBeg;
+         i < indexMid && i < DS_GENESIS_WALLETS.size(); i++) {
       const auto& addrStr = DS_GENESIS_WALLETS.at(i);
       bytes addrBytes;
       if (!DataConversion::HexStrToUint8Vec(addrStr, addrBytes)) {
@@ -295,7 +298,8 @@ void Lookup::SetLookupNodes() {
       m_myDSGenesisAccounts1.emplace_back(Address(addrBytes));
     }
 
-    for (unsigned int i = indexMid; i < indexEnd; i++) {
+    for (unsigned int i = indexMid;
+         i < indexEnd && i < DS_GENESIS_WALLETS.size(); i++) {
       const auto& addrStr = DS_GENESIS_WALLETS.at(i);
       bytes addrBytes;
       if (!DataConversion::HexStrToUint8Vec(addrStr, addrBytes)) {
@@ -429,7 +433,7 @@ bool Lookup::GenTxnToSend(size_t num_txn, vector<Transaction>& shardTxn,
       shared_lock<shared_timed_mutex> lock(
           AccountStore::GetInstance().GetPrimaryMutex());
 
-      auto account = AccountStore::GetInstance().GetAccount(addr);
+      auto account = AccountStore::GetInstance().GetAccount(addr, true);
 
       if (!account) {
         LOG_GENERAL(WARNING, "Failed to get genesis account!");
@@ -507,7 +511,7 @@ bool Lookup::GenTxnToSend(size_t num_txn,
       if (fromAcctStore) {
         shared_lock<shared_timed_mutex> lock(
             AccountStore::GetInstance().GetPrimaryMutex());
-        nonce = AccountStore::GetInstance().GetAccount(addr)->GetNonce();
+        nonce = AccountStore::GetInstance().GetAccount(addr, true)->GetNonce();
       }
 
       txns.clear();

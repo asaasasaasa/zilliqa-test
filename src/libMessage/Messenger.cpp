@@ -2632,10 +2632,12 @@ bool Messenger::SetAccountStoreDelta(bytes& dst, const unsigned int offset,
                         << accountStoreTemp.GetNumOfAccounts());
 
   for (const auto& entry : *accountStoreTemp.GetAddressToAccount()) {
+    LOG_GENERAL(
+        INFO, "[DM7] " << entry.first.hex() << " " << entry.second.GetNonce());
     ProtoAccountStore::AddressAccount* protoEntry = result.add_entries();
     protoEntry->set_address(entry.first.data(), entry.first.size);
     ProtoAccount* protoEntryAccount = protoEntry->mutable_account();
-    if (!AccountDeltaToProtobuf(accountStore.GetAccount(entry.first),
+    if (!AccountDeltaToProtobuf(accountStore.GetAccount(entry.first, true),
                                 entry.second, *protoEntryAccount)) {
       LOG_GENERAL(WARNING, "AccountDeltaToProtobuf failed");
       return false;
@@ -2719,13 +2721,13 @@ bool Messenger::GetAccountStoreDelta(const bytes& src,
                                        (unsigned int)address.size),
          address.asArray().begin());
 
-    const Account* oriAccount =
-        accountStore.GetAccount(address, dev::h256(), false);
+    const Account* oriAccount = accountStore.GetAccount(address, false);
     bool fullCopy = false;
     if (oriAccount == nullptr) {
       Account acc(0, 0);
       accountStore.AddAccount(address, acc);
-      oriAccount = accountStore.GetAccount(address);
+      LOG_GENERAL(INFO, "Add account finished");
+      oriAccount = accountStore.GetAccount(address, false);
       fullCopy = true;
 
       if (oriAccount == nullptr) {

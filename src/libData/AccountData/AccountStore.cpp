@@ -321,6 +321,8 @@ bool AccountStore::MoveUpdatesToDisk(uint64_t dsBlockNum) {
     return false;
   }
 
+  LOG_GENERAL(INFO, "[DM7]"
+                        << "Cleared");
   m_addressToAccount->clear();
 
   return true;
@@ -387,6 +389,8 @@ void AccountStore::DiscardUnsavedUpdates() {
         }
       }
     }
+    LOG_GENERAL(INFO, "[DM7]"
+                          << "Cleared");
     m_addressToAccount->clear();
   } catch (const boost::exception& e) {
     LOG_GENERAL(WARNING, "Error with AccountStore::DiscardUnsavedUpdates. "
@@ -579,17 +583,6 @@ bool AccountStore::RevertCommitTemp() {
   LOG_MARKER();
 
   unique_lock<shared_timed_mutex> g(m_mutexPrimary);
-
-  if (LOOKUP_NODE_MODE) {
-    if (m_prevRoot != dev::h256()) {
-      try {
-        m_state.setRoot(m_prevRoot);
-      } catch (...) {
-        LOG_GENERAL(WARNING, "setRoot for " << m_prevRoot.hex() << " failed");
-        return false;
-      }
-    }
-  }
 
   // Revert changed
   for (auto const& entry : m_addressToAccountRevChanged) {

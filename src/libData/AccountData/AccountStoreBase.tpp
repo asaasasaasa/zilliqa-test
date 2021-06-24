@@ -28,6 +28,8 @@ AccountStoreBase<MAP>::AccountStoreBase() {
 
 template <class MAP>
 void AccountStoreBase<MAP>::Init() {
+  LOG_GENERAL(INFO, "[DM7]"
+                        << "Cleared");
   m_addressToAccount->clear();
 }
 
@@ -183,7 +185,9 @@ template <class MAP>
 bool AccountStoreBase<MAP>::AddAccount(const Address& address,
                                        const Account& account, bool toReplace) {
   // LOG_MARKER();
-
+  LOG_GENERAL(INFO, "[DM7]"
+                        << "Added " << address.hex() << " "
+                        << account.GetNonce());
   if (toReplace || !IsAccountExist(address)) {
     (*m_addressToAccount)[address] = account;
 
@@ -203,6 +207,7 @@ bool AccountStoreBase<MAP>::AddAccount(const PubKey& pubKey,
 
 template <class MAP>
 void AccountStoreBase<MAP>::RemoveAccount(const Address& address) {
+  LOG_GENERAL(INFO, "Removed " << address.hex());
   if (IsAccountExist(address)) {
     m_addressToAccount->erase(address);
   }
@@ -210,6 +215,7 @@ void AccountStoreBase<MAP>::RemoveAccount(const Address& address) {
 
 template <class MAP>
 Account* AccountStoreBase<MAP>::GetAccount(const Address& address) {
+  LOG_MARKER();
   auto it = m_addressToAccount->find(address);
   if (it != m_addressToAccount->end()) {
     return &it->second;
@@ -327,9 +333,9 @@ bool AccountStoreBase<MAP>::IncreaseNonce(const Address& address) {
 
 template <class MAP>
 uint64_t AccountStoreBase<MAP>::GetNonce(const Address& address) {
-  // LOG_MARKER();
+  LOG_MARKER();
 
-  Account* account = GetAccount(address);
+  Account* account = this->GetAccount(address);
 
   if (account != nullptr) {
     return account->GetNonce();

@@ -46,8 +46,7 @@ class AccountStoreTrie : public AccountStoreSC<MAP> {
 
   Account* GetAccount(const Address& address) override;
 
-  Account* GetAccount(const Address& address, const dev::h256& rootHash,
-                      bool resetRoot);
+  Account* GetAccount(const Address& address, bool resetRoot);
 
   bool GetProof(const Address& address, const dev::h256& rootHash,
                 Account& account, std::set<std::string>& nodes);

@@ -62,6 +62,9 @@ class AccountStoreTemp : public AccountStoreSC<std::map<Address, Account>> {
 
   void AddAccountDuringDeserialization(const Address& address,
                                        const Account& account) {
+    LOG_GENERAL(INFO, "[DM7]"
+                          << "Added " << address.hex() << " "
+                          << account.GetNonce());
     (*m_addressToAccount)[address] = account;
   }
 };
@@ -200,7 +203,9 @@ class AccountStore
                                        const bool fullCopy = false,
                                        const bool revertible = false) {
     (*m_addressToAccount)[address] = account;
-
+    LOG_GENERAL(INFO, "[DM7]"
+                          << "Added " << address.hex() << " "
+                          << account.GetNonce());
     if (revertible) {
       if (fullCopy) {
         m_addressToAccountRevCreated[address] = account;
