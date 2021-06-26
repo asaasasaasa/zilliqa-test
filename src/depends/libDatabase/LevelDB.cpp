@@ -27,6 +27,13 @@
 
 using namespace std;
 
+void LevelDB::log_error(leveldb::Status status) const
+{
+    if(!status.IsNotFound())
+    {
+    LOG_GENERAL(WARNING, "LevelDB " << m_dbName << " status is not OK - " << status.ToString());
+    }
+}
 
 LevelDB::LevelDB(const string& dbName, const string& path, const string& subdirectory)
 {
@@ -145,7 +152,7 @@ string LevelDB::Lookup(const std::string & key) const
     leveldb::Status s = m_db->Get(leveldb::ReadOptions(), key, &value);
     if (!s.ok())
     {
-        // TODO
+        log_error(s);
         return "";
     }
 
@@ -158,7 +165,7 @@ string LevelDB::Lookup(const vector<unsigned char>& key) const
     leveldb::Status s = m_db->Get(leveldb::ReadOptions(), leveldb::Slice(vector_ref<const unsigned char>(&key[0], key.size())), &value);
     if (!s.ok())
     {
-        // TODO
+        log_error(s);
         return "";
     }
 
@@ -172,7 +179,7 @@ string LevelDB::Lookup(const boost::multiprecision::uint256_t & blockNum) const
 
     if (!s.ok())
     {
-        // TODO
+        log_error(s);
         return "";
     }
 
@@ -186,6 +193,7 @@ string LevelDB::Lookup(const boost::multiprecision::uint256_t & blockNum, bool &
 
     if (!s.ok())
     {
+        log_error(s);
         found = false;
         return "";
     }
@@ -199,7 +207,7 @@ string LevelDB::Lookup(const dev::h256 & key) const
     leveldb::Status s = m_db->Get(leveldb::ReadOptions(), leveldb::Slice(key.hex()), &value);
     if (!s.ok())
     {
-        // TODO
+        log_error(s); 
         return "";
     }
 
@@ -213,7 +221,7 @@ string LevelDB::Lookup(const dev::bytesConstRef & key) const
                                   &value);
     if (!s.ok())
     {
-        // TODO
+        log_error(s);
         return "";
     }
 
