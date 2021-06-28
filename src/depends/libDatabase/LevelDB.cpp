@@ -29,10 +29,7 @@ using namespace std;
 
 void LevelDB::log_error(leveldb::Status status) const
 {
-    if(!status.IsNotFound())
-    {
     LOG_GENERAL(WARNING, "LevelDB " << m_dbName << " status is not OK - " << status.ToString());
-    }
 }
 
 LevelDB::LevelDB(const string& dbName, const string& path, const string& subdirectory)
@@ -47,7 +44,7 @@ LevelDB::LevelDB(const string& dbName, const string& path, const string& subdire
         return;
     }
 
-    m_options.max_open_files = 256;
+    m_options.max_open_files = 1024;
     m_options.create_if_missing = true;
 
     leveldb::DB* db;

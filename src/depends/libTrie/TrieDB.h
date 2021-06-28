@@ -378,7 +378,7 @@ namespace dev
 
         void insert(KeyType _k, bytesConstRef _value)
         {
-//            LOG_GENERAL(INFO, "Inserting to SpecificTrieDB Key : Value = " << _k << " : " << _value);
+            LOG_GENERAL(INFO, "Inserting to SpecificTrieDB Key : Value = " << _k << " : " << _value);
             Generic::insert(bytesConstRef((byte const*)&_k, sizeof(KeyType)), _value);
         }
         void insert(KeyType _k, bytes const& _value)
@@ -924,7 +924,7 @@ namespace dev
         // - This might mean inserting an entry into m_over
         // We will take care to ensure that (our reference to) _orig is killed.
 
-        // Empty - just insert here
+        // Empty - just insert heremergeAt
         if (_orig.isEmpty())
             return place(_orig, _k, _v);
 
@@ -1010,6 +1010,7 @@ namespace dev
 
             if(r.isNull())
             {
+                LOG_GENERAL(WARNING,"Could not find: "<<_orig.toString());
                 LOG_GENERAL(FATAL,
                             "assertion failed (" << __FILE__ << ":" << __LINE__ << ": "
                                                  << __FUNCTION__ << ")");
