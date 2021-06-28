@@ -1010,10 +1010,14 @@ namespace dev
 
             if(r.isNull())
             {
-                LOG_GENERAL(WARNING,"Could not find: "<<_orig.toString());
+                LOG_GENERAL(WARNING,"Could not find: "<<_orig.toHash<h256>().hex());
                 LOG_GENERAL(FATAL,
                             "assertion failed (" << __FILE__ << ":" << __LINE__ << ": "
                                                  << __FUNCTION__ << ")");
+            }
+            else
+            {
+                LOG_GENERAL(INFO,"Found: "<<_orig.toHash<h256>().hex());
             }
 
             isRemovable = true;
