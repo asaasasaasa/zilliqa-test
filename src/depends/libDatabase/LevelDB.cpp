@@ -44,7 +44,7 @@ LevelDB::LevelDB(const string& dbName, const string& path, const string& subdire
         return;
     }
 
-    m_options.max_open_files = 1024;
+    m_options.max_open_files = 100;
     m_options.create_if_missing = true;
 
     leveldb::DB* db;
