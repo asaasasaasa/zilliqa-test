@@ -44,7 +44,7 @@ LevelDB::LevelDB(const string& dbName, const string& path, const string& subdire
         return;
     }
 
-    m_options.max_open_files = 100;
+    m_options.max_open_files = 1024;
     m_options.create_if_missing = true;
 
     leveldb::DB* db;
@@ -82,7 +82,7 @@ LevelDB::LevelDB(const std::string & dbName, const std::string& subdirectory, bo
     this->m_subdirectory = subdirectory;
     this->m_dbName = dbName;
 
-    m_options.max_open_files = 256;
+    m_options.max_open_files = 1024;
     m_options.create_if_missing = true;
 
     leveldb::DB* db;
@@ -512,7 +512,7 @@ bool LevelDB::RefreshDB()
     m_db.reset();
 
     leveldb::Options options;
-    options.max_open_files = 256;
+    options.max_open_files = 1024;
     options.create_if_missing = true;
 
     leveldb::DB* db;
@@ -556,7 +556,7 @@ bool LevelDB::ResetDBForNormalNode()
         boost::filesystem::remove_all(STORAGE_PATH + PERSISTENCE_PATH + "/" + this->m_dbName);
 
         leveldb::Options options;
-        options.max_open_files = 256;
+        options.max_open_files = 1024;
         options.create_if_missing = true;
 
         leveldb::DB* db;
@@ -600,7 +600,7 @@ bool LevelDB::ResetDBForLookupNode()
         boost::filesystem::remove_all(STORAGE_PATH + PERSISTENCE_PATH + "/" + this->m_dbName);
 
         leveldb::Options options;
-        options.max_open_files = 256;
+        options.max_open_files = 1024;
         options.create_if_missing = true;
 
         leveldb::DB* db;
