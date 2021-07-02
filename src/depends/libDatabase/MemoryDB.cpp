@@ -110,11 +110,11 @@ namespace dev
 // #endif
         if (m_main.count(_h))
         {
-            m_main[_h].second = 0;
-            return true;
-        } else {
-            m_main[_h] = {"", 0};
-            return true;
+            if (m_main[_h].second > 0)
+            {
+                m_main[_h].second--;
+                return true;
+            }
         }
         return false;
     }
