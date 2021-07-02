@@ -21,6 +21,8 @@
 #include "depends/common/FixedHash.h"
 
 using BlockHash = dev::h256;
+const size_t BLOCK_NUMERIC_DIGITS =
+    std::to_string(std::numeric_limits<uint64_t>::max()).size();
 
 // Data sizes
 const unsigned int COMMON_HASH_SIZE = 32;
@@ -85,6 +87,7 @@ enum MetaType : unsigned char {
   WAKEUPFORUPGRADE,
   LATEST_EPOCH_STATES_UPDATED,  // [deprecated soon]
   EPOCHFIN,
+  EARLIEST_HISTORY_STATE_EPOCH,
 };
 
 // Sync Type
@@ -151,6 +154,8 @@ extern const std::string GENESIS_PUBKEY;
 extern const unsigned int UPGRADE_TARGET_DS_NUM;
 extern const std::string STORAGE_PATH;
 extern const unsigned int NUM_EPOCHS_PER_PERSISTENT_DB;
+extern const bool KEEP_HISTORICAL_STATE;
+extern const unsigned int NUM_DS_EPOCHS_STATE_HISTORY;
 
 // Version constants
 extern const unsigned int MSG_VERSION;
@@ -175,6 +180,7 @@ extern const unsigned int SEED_SYNC_LARGE_PULL_INTERVAL;
 extern const bool ENABLE_SEED_TO_SEED_COMMUNICATION;
 extern const unsigned int P2P_SEED_CONNECT_PORT;
 extern const unsigned int P2P_SEED_SERVER_CONNECTION_TIMEOUT;
+extern const unsigned int FETCH_DS_BLOCK_LIMIT;
 
 // RemoteStorageDB
 extern const std::string REMOTESTORAGE_DB_HOST;
@@ -228,8 +234,10 @@ extern const unsigned int DS_TX_PROCESSING_TIMEOUT;
 extern const unsigned int NEW_LOOKUP_SYNC_DELAY_IN_SECONDS;
 extern const unsigned int GETSHARD_TIMEOUT_IN_SECONDS;
 extern const unsigned int GETSTATEDELTAS_TIMEOUT_IN_SECONDS;
+extern const unsigned int GETCOSIGREWARDS_TIMEOUT_IN_SECONDS;
 extern const unsigned int RETRY_REJOINING_TIMEOUT;
 extern const unsigned int RETRY_GETSTATEDELTAS_COUNT;
+extern const unsigned int RETRY_COSIGREWARDS_COUNT;
 extern const unsigned int MAX_FETCHMISSINGMBS_NUM;
 extern const unsigned int LAST_N_TXBLKS_TOCHECK_FOR_MISSINGMBS;
 extern const unsigned int REMOVENODEFROMBLACKLIST_DELAY_IN_SECONDS;
@@ -305,6 +313,7 @@ extern const bool ENABLE_GETTXNBODIESFORTXBLOCK;
 extern const unsigned int NUM_TXNS_PER_PAGE;
 extern const unsigned int PENDING_TXN_QUERY_NUM_EPOCHS;
 extern const unsigned int PENDING_TXN_QUERY_MAX_RESULTS;
+extern const bool CONNECTION_IO_USE_EPOLL;
 
 // Network composition constants
 extern const unsigned int COMM_SIZE;
@@ -379,6 +388,7 @@ extern const unsigned int RESUME_BLACKLIST_DELAY_IN_SECONDS;
 extern const unsigned int INCRDB_DSNUMS_WITH_STATEDELTAS;
 extern const bool CONTRACT_STATES_MIGRATED;
 extern const unsigned int MAX_IPCHANGE_REQUEST_LIMIT;
+extern const unsigned int MAX_REJOIN_NETWORK_ATTEMPTS;
 
 // Smart contract constants
 extern const bool ENABLE_SC;
@@ -386,6 +396,7 @@ extern const std::string SCILLA_ROOT;
 extern const std::string SCILLA_LLVM_ROOT;
 extern const std::string SCILLA_CHECKER;
 extern const std::string SCILLA_BINARY;
+extern const std::string SCILLA_OBJ_CACHE;
 extern const std::string SCILLA_FILES;
 extern const std::string SCILLA_LOG;
 extern const std::string SCILLA_LIB;
@@ -402,7 +413,7 @@ extern const bool ENABLE_SCILLA_MULTI_VERSION;
 extern const bool LOG_SC;
 extern const bool DISABLE_SCILLA_LIB;
 extern const unsigned int SCILLA_SERVER_PENDING_IN_MS;
-// TODO: Remove FIELDS_MAP_DEPTH_INDICATOR after data migration
+extern const unsigned int SCILLA_SERVER_LOOP_WAIT_MICROSECONDS;
 const std::string FIELDS_MAP_DEPTH_INDICATOR = "_fields_map_depth";
 const std::string MAP_DEPTH_INDICATOR = "_depth";
 const std::string SCILLA_VERSION_INDICATOR = "_version";
@@ -410,6 +421,13 @@ const std::string TYPE_INDICATOR = "_type";
 const std::string HAS_MAP_INDICATOR = "_hasmap";
 const std::string CONTRACT_ADDR_INDICATOR = "_addr";
 extern const bool SCILLA_VM_DEV;
+
+// TODO : replace the above with belows
+const char FIELDS_MAP_DEPTH_SIGN = 0x10;
+const char MAP_DEPTH_SIGN = 0x11;
+const char SCILLA_VERSION_SIGN = 0x12;
+const char TYPE_SIGN = 0x13;
+const char CONTRACT_ADDR_SIGN = 0x14;
 
 // Test constants
 extern const bool ENABLE_CHECK_PERFORMANCE_LOG;

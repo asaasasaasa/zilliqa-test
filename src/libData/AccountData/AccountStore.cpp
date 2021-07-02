@@ -43,6 +43,8 @@ AccountStore::AccountStore() {
     boost::filesystem::remove_all(SCILLA_IPC_SOCKET_PATH);
     m_scillaIPCServerConnector =
         make_unique<jsonrpc::UnixDomainSocketServer>(SCILLA_IPC_SOCKET_PATH);
+    m_scillaIPCServerConnector->SetWaitTime(
+        SCILLA_SERVER_LOOP_WAIT_MICROSECONDS);
     m_scillaIPCServer =
         make_shared<ScillaIPCServer>(*m_scillaIPCServerConnector);
     ScillaClient::GetInstance().Init();
@@ -73,7 +75,7 @@ void AccountStore::Init() {
 
   lock_guard<mutex> g(m_mutexDB);
 
-  ContractStorage2::GetContractStorage().Reset();
+  ContractStorage::GetContractStorage().Reset();
   m_db.ResetDB();
 }
 
@@ -82,7 +84,7 @@ void AccountStore::InitSoft() {
 
   unique_lock<shared_timed_mutex> g(m_mutexPrimary);
 
-  AccountStoreTrie<OverlayDB, unordered_map<Address, Account>>::Init();
+  AccountStoreTrie<unordered_map<Address, Account>>::Init();
 
   InitRevertibles();
 
@@ -91,8 +93,12 @@ void AccountStore::InitSoft() {
 
 bool AccountStore::RefreshDB() {
   LOG_MARKER();
-  lock_guard<mutex> g(m_mutexDB);
-  return m_db.RefreshDB();
+  bool ret = true;
+  {
+    lock_guard<mutex> g(m_mutexDB);
+    ret = ret && m_db.RefreshDB();
+  }
+  return ret;
 }
 
 void AccountStore::InitTemp() {
@@ -103,7 +109,7 @@ void AccountStore::InitTemp() {
   m_accountStoreTemp->Init();
   m_stateDeltaSerialized.clear();
 
-  ContractStorage2::GetContractStorage().InitTempState(true);
+  ContractStorage::GetContractStorage().InitTempState();
 }
 
 void AccountStore::InitRevertibles() {
@@ -114,7 +120,7 @@ void AccountStore::InitRevertibles() {
   m_addressToAccountRevChanged.clear();
   m_addressToAccountRevCreated.clear();
 
-  ContractStorage2::GetContractStorage().InitRevertibles();
+  ContractStorage::GetContractStorage().InitRevertibles();
 }
 
 AccountStore& AccountStore::GetInstance() {
@@ -122,12 +128,11 @@ AccountStore& AccountStore::GetInstance() {
   return accountstore;
 }
 
-bool AccountStore::Serialize(bytes& src, unsigned int offset) const {
+bool AccountStore::Serialize(bytes& src, unsigned int offset) {
   LOG_MARKER();
   shared_lock<shared_timed_mutex> lock(m_mutexPrimary);
-  return AccountStoreTrie<
-      dev::OverlayDB, std::unordered_map<Address, Account>>::Serialize(src,
-                                                                       offset);
+  return AccountStoreTrie<std::unordered_map<Address, Account>>::Serialize(
+      src, offset);
 }
 
 bool AccountStore::Deserialize(const bytes& src, unsigned int offset) {
@@ -141,6 +146,8 @@ bool AccountStore::Deserialize(const bytes& src, unsigned int offset) {
     LOG_GENERAL(WARNING, "Messenger::GetAccountStore failed.");
     return false;
   }
+
+  m_prevRoot = GetStateRootHash();
 
   return true;
 }
@@ -191,6 +198,18 @@ bool AccountStore::DeserializeDelta(const bytes& src, unsigned int offset,
                                     bool revertible) {
   LOG_MARKER();
 
+  if (LOOKUP_NODE_MODE) {
+    std::lock_guard<std::mutex> g(m_mutexTrie);
+    if (m_prevRoot != dev::h256()) {
+      try {
+        m_state.setRoot(m_prevRoot);
+      } catch (...) {
+        LOG_GENERAL(WARNING, "setRoot for " << m_prevRoot.hex() << " failed");
+        return false;
+      }
+    }
+  }
+
   if (revertible) {
     unique_lock<shared_timed_mutex> g(m_mutexPrimary, defer_lock);
     unique_lock<mutex> g2(m_mutexRevertibles, defer_lock);
@@ -211,6 +230,8 @@ bool AccountStore::DeserializeDelta(const bytes& src, unsigned int offset,
     }
   }
 
+  m_prevRoot = GetStateRootHash();
+
   return true;
 }
 
@@ -219,7 +240,7 @@ bool AccountStore::DeserializeDeltaTemp(const bytes& src, unsigned int offset) {
   return m_accountStoreTemp->DeserializeDelta(src, offset);
 }
 
-bool AccountStore::MoveRootToDisk(const h256& root) {
+bool AccountStore::MoveRootToDisk(const dev::h256& root) {
   // convert h256 to bytes
   if (!BlockStorage::GetBlockStorage().PutStateRoot(root.asBytes())) {
     LOG_GENERAL(INFO, "FAIL: Put state root failed " << root.hex());
@@ -228,40 +249,45 @@ bool AccountStore::MoveRootToDisk(const h256& root) {
   return true;
 }
 
-bool AccountStore::MoveUpdatesToDisk() {
+bool AccountStore::MoveUpdatesToDisk(const uint64_t& dsBlockNum,
+                                     uint64_t& initTrieSnapshotDSEpoch) {
   LOG_MARKER();
 
   unique_lock<shared_timed_mutex> g(m_mutexPrimary, defer_lock);
   unique_lock<mutex> g2(m_mutexDB, defer_lock);
   lock(g, g2);
 
+  if (KEEP_HISTORICAL_STATE) {
+    LOG_GENERAL(INFO, "dsBlockNum: " << dsBlockNum
+                                     << " initTrieSnapshotDSEpoch: "
+                                     << initTrieSnapshotDSEpoch);
+  }
+
   unordered_map<string, string> code_batch;
   unordered_map<string, string> initdata_batch;
 
   for (const auto& i : *m_addressToAccount) {
     if (i.second.isContract()) {
-      if (ContractStorage2::GetContractStorage()
+      if (ContractStorage::GetContractStorage()
               .GetContractCode(i.first)
               .empty()) {
         code_batch.insert({i.first.hex(), DataConversion::CharArrayToString(
                                               i.second.GetCode())});
       }
 
-      if (ContractStorage2::GetContractStorage().GetInitData(i.first).empty()) {
+      if (ContractStorage::GetContractStorage().GetInitData(i.first).empty()) {
         initdata_batch.insert({i.first.hex(), DataConversion::CharArrayToString(
                                                   i.second.GetInitData())});
       }
     }
   }
 
-  if (!ContractStorage2::GetContractStorage().PutContractCodeBatch(
-          code_batch)) {
+  if (!ContractStorage::GetContractStorage().PutContractCodeBatch(code_batch)) {
     LOG_GENERAL(WARNING, "PutContractCodeBatch failed");
     return false;
   }
 
-  if (!ContractStorage2::GetContractStorage().PutInitDataBatch(
-          initdata_batch)) {
+  if (!ContractStorage::GetContractStorage().PutInitDataBatch(initdata_batch)) {
     LOG_GENERAL(WARNING, "PutInitDataBatch failed");
     return false;
   }
@@ -269,9 +295,9 @@ bool AccountStore::MoveUpdatesToDisk() {
   bool ret = true;
 
   if (ret) {
-    if (!ContractStorage2::GetContractStorage().CommitStateDB()) {
+    if (!ContractStorage::GetContractStorage().CommitStateDB(dsBlockNum)) {
       LOG_GENERAL(WARNING,
-                  "CommitTempStateDB failed. need to rever the change on "
+                  "CommitTempStateDB failed. need to revert the changes on "
                   "ContractCode");
       ret = false;
     }
@@ -279,7 +305,7 @@ bool AccountStore::MoveUpdatesToDisk() {
 
   if (!ret) {
     for (const auto& it : code_batch) {
-      if (!ContractStorage2::GetContractStorage().DeleteContractCode(
+      if (!ContractStorage::GetContractStorage().DeleteContractCode(
               h160(it.first))) {
         LOG_GENERAL(WARNING, "Failed to delete contract code for " << it.first);
       }
@@ -288,23 +314,58 @@ bool AccountStore::MoveUpdatesToDisk() {
 
   try {
     lock_guard<mutex> g(m_mutexTrie);
-    if (!m_state.db()->commit()) {
+    if (!m_state.db()->commit(dsBlockNum)) {
       LOG_GENERAL(WARNING, "LevelDB commit failed");
     }
+
+    // update EARLIEST_HISTORY_STATE_EPOCH
+    if (KEEP_HISTORICAL_STATE && dsBlockNum > 0) {
+      bytes inittrieepoch_ser;
+      bool found = BlockStorage::GetBlockStorage().GetMetadata(
+          MetaType::EARLIEST_HISTORY_STATE_EPOCH, inittrieepoch_ser);
+
+      if (!found) {
+        // We have to configure the init trie epoch
+        BlockStorage::GetBlockStorage().PutMetadata(
+            MetaType::EARLIEST_HISTORY_STATE_EPOCH,
+            DataConversion::StringToCharArray(std::to_string(dsBlockNum)));
+        initTrieSnapshotDSEpoch = dsBlockNum;
+      }
+    }
+
     if (!MoveRootToDisk(m_state.root())) {
       LOG_GENERAL(WARNING, "MoveRootToDisk failed " << m_state.root().hex());
       return false;
     }
-    m_prevRoot = m_state.root();
   } catch (const boost::exception& e) {
     LOG_GENERAL(WARNING, "Error with AccountStore::MoveUpdatesToDisk. "
                              << boost::diagnostic_information(e));
     return false;
   }
+  if (KEEP_HISTORICAL_STATE) {
+    LOG_GENERAL(INFO, "dsBlockNum: " << dsBlockNum
+                                     << " initTrieSnapshotDSEpoch: "
+                                     << initTrieSnapshotDSEpoch);
+  }
 
   m_addressToAccount->clear();
 
   return true;
+}
+
+void AccountStore::PurgeUnnecessary() {
+  m_state.db()->DetachedExecutePurge();
+  ContractStorage::GetContractStorage().PurgeUnnecessary();
+}
+
+void AccountStore::SetPurgeStopSignal() {
+  m_state.db()->SetStopSignal();
+  ContractStorage::GetContractStorage().SetPurgeStopSignal();
+}
+
+bool AccountStore::IsPurgeRunning() {
+  return (m_state.db()->IsPurgeRunning() ||
+          ContractStorage::GetContractStorage().IsPurgeRunning());
 }
 
 bool AccountStore::UpdateStateTrieFromTempStateDB() {
@@ -344,7 +405,14 @@ void AccountStore::DiscardUnsavedUpdates() {
     {
       lock_guard<mutex> g(m_mutexTrie);
       m_state.db()->rollback();
-      m_state.setRoot(m_prevRoot);
+      if (m_prevRoot != dev::h256()) {
+        try {
+          m_state.setRoot(m_prevRoot);
+        } catch (...) {
+          LOG_GENERAL(WARNING, "setRoot for " << m_prevRoot.hex() << " failed");
+          return;
+        }
+      }
     }
     m_addressToAccount->clear();
   } catch (const boost::exception& e) {
@@ -354,6 +422,54 @@ void AccountStore::DiscardUnsavedUpdates() {
 }
 
 bool AccountStore::RetrieveFromDisk() {
+  LOG_MARKER();
+
+  InitSoft();
+
+  unique_lock<shared_timed_mutex> g(m_mutexPrimary, defer_lock);
+  unique_lock<mutex> g2(m_mutexDB, defer_lock);
+  lock(g, g2);
+
+  bytes rootBytes;
+  if (!BlockStorage::GetBlockStorage().GetStateRoot(rootBytes)) {
+    // To support backward compatibilty - lookup with new binary trying to
+    // recover from old database
+    if (BlockStorage::GetBlockStorage().GetMetadata(STATEROOT, rootBytes)) {
+      if (!BlockStorage::GetBlockStorage().PutStateRoot(rootBytes)) {
+        LOG_GENERAL(WARNING,
+                    "BlockStorage::PutStateRoot failed "
+                        << DataConversion::CharArrayToString(rootBytes));
+        return false;
+      }
+    } else {
+      LOG_GENERAL(WARNING, "Failed to retrieve StateRoot from disk");
+      return false;
+    }
+  }
+
+  try {
+    dev::h256 root(rootBytes);
+    LOG_GENERAL(INFO, "StateRootHash:" << root.hex());
+    lock_guard<mutex> g(m_mutexTrie);
+    if (root != dev::h256()) {
+      try {
+        m_state.setRoot(root);
+        m_prevRoot = m_state.root();
+      } catch (...) {
+        LOG_GENERAL(WARNING, "setRoot for " << m_prevRoot.hex() << " failed");
+        return false;
+      }
+    }
+  } catch (const boost::exception& e) {
+    LOG_GENERAL(WARNING, "Error with AccountStore::RetrieveFromDisk. "
+                             << boost::diagnostic_information(e));
+    return false;
+  }
+  return true;
+}
+
+bool AccountStore::RetrieveFromDiskOld() {
+  // Only For migration
   LOG_MARKER();
 
   InitSoft();
@@ -479,10 +595,21 @@ void AccountStore::CommitTempRevertible() {
   }
 }
 
-void AccountStore::RevertCommitTemp() {
+bool AccountStore::RevertCommitTemp() {
   LOG_MARKER();
 
   unique_lock<shared_timed_mutex> g(m_mutexPrimary);
+
+  if (LOOKUP_NODE_MODE) {
+    if (m_prevRoot != dev::h256()) {
+      try {
+        m_state.setRoot(m_prevRoot);
+      } catch (...) {
+        LOG_GENERAL(WARNING, "setRoot for " << m_prevRoot.hex() << " failed");
+        return false;
+      }
+    }
+  }
 
   // Revert changed
   for (auto const& entry : m_addressToAccountRevChanged) {
@@ -494,7 +621,9 @@ void AccountStore::RevertCommitTemp() {
     RemoveFromTrie(entry.first);
   }
 
-  ContractStorage2::GetContractStorage().RevertContractStates();
+  ContractStorage::GetContractStorage().RevertContractStates();
+
+  return true;
 }
 
 void AccountStore::NotifyTimeoutTemp() { m_accountStoreTemp->NotifyTimeout(); }
@@ -635,6 +764,7 @@ bool AccountStore::MigrateContractStates(
 
   std::ofstream os_1;
   std::ofstream os_2;
+  (void)disambiguation;
   if (!contract_address_output_filename.empty()) {
     os_1.open(contract_address_output_filename);
   }
@@ -697,15 +827,17 @@ bool AccountStore::MigrateContractStates(
       return false;
     }
 
+    account.SetStorageRoot(dev::h256());
     // invoke scilla checker
-    m_scillaIPCServer->setContractAddressVer(address, scilla_version);
+    m_scillaIPCServer->setContractAddressVerRoot(address, scilla_version,
+                                                 account.GetStorageRoot());
     std::string checkerPrint;
     bool ret_checker = true;
     TransactionReceipt receipt;
     uint64_t gasRem = UINT64_MAX;
-    InvokeInterpreter(CHECKER, checkerPrint, scilla_version, is_library, gasRem,
-                      std::numeric_limits<uint128_t>::max(), ret_checker,
-                      receipt);
+    InvokeInterpreter(CHECKER, address, checkerPrint, scilla_version,
+                      is_library, gasRem, std::numeric_limits<uint128_t>::max(),
+                      ret_checker, receipt);
 
     if (!ret_checker) {
       LOG_GENERAL(WARNING, "InvokeScillaChecker failed");
@@ -714,14 +846,13 @@ bool AccountStore::MigrateContractStates(
 
     // adding scilla_version metadata
     t_metadata.emplace(
-        Contract::ContractStorage2::GetContractStorage().GenerateStorageKey(
+        Contract::ContractStorage::GetContractStorage().GenerateStorageKey(
             address, SCILLA_VERSION_INDICATOR, {}),
         DataConversion::StringToCharArray(std::to_string(scilla_version)));
 
     // adding depth and type metadata
-    std::string llvm_ir;
-    if (!ParseContractCheckerOutput(address, checkerPrint, receipt, llvm_ir,
-                                    t_metadata, gasRem)) {
+    if (!ParseContractCheckerOutput(address, checkerPrint, receipt, t_metadata,
+                                    gasRem)) {
       LOG_GENERAL(WARNING, "ParseContractCheckerOutput failed");
       if (ignoreCheckerFailure) {
         continue;
@@ -729,118 +860,55 @@ bool AccountStore::MigrateContractStates(
       return false;
     }
 
-    // remove previous map depth
-    std::vector<std::string> toDeletes;
-    toDeletes.emplace_back(
-        Contract::ContractStorage2::GetContractStorage().GenerateStorageKey(
-            address, FIELDS_MAP_DEPTH_INDICATOR, {}));
+    Json::Value stateBeforeMigration, stateAfterMigration;
+    Contract::ContractStorage::GetContractStorage().FetchStateJsonForContract(
+        stateBeforeMigration, address, "", {}, true);
 
-    account.SetStorageRoot(dev::h256());
-
-    account.UpdateStates(address, t_metadata, toDeletes, false);
-
-    // Run the disambiguator.
-
-    std::string disPrint;
-    if (disambiguation) {
-      Json::Value stateBeforeMigration, stateAfterMigration;
-      Contract::ContractStorage2::GetContractStorage()
-          .FetchStateJsonForContract(stateBeforeMigration, address, "", {},
-                                     true);
-
-      uint64_t gasRem = UINT64_MAX;
-      InvokeInterpreter(DISAMBIGUATE, disPrint, scilla_version, false, gasRem,
-                        std::numeric_limits<uint128_t>::max(), ret_checker,
-                        receipt);
-
-      LOG_GENERAL(INFO, "Disambiguate tool output: " << disPrint);
-
-#if MIGRATE_INIT_JSON
-
-      ifstream initAfterMigrationRef{OUTPUT_JSON};
-      std::string initAfterMigration{
-          istreambuf_iterator<char>(initAfterMigrationRef),
-          istreambuf_iterator<char>()};
-      ifstream initBeforeMigrationRef{INIT_JSON};
-      std::string initBeforeMigration{
-          istreambuf_iterator<char>(initBeforeMigrationRef),
-          istreambuf_iterator<char>()};
-
-      Json::Value beforeInitJson, afterInitJson;
-      if (!JSONUtils::GetInstance().convertStrtoJson(initBeforeMigration,
-                                                     beforeInitJson) ||
-          !JSONUtils::GetInstance().convertStrtoJson(initAfterMigration,
-                                                     afterInitJson)) {
-        LOG_GENERAL(
-            WARNING,
-            "Failed to parse init JSON before/after migration\nBefore:\n"
-                << initBeforeMigration << "\nAfter:\n"
-                << initAfterMigration);
+    std::map<std::string, bytes> types;
+    Contract::ContractStorage::GetContractStorage().FetchStateDataForContract(
+        types, address, TYPE_INDICATOR, {}, true);
+    for (auto const& type : types) {
+      vector<string> fragments;
+      boost::split(fragments, type.first,
+                   bind1st(std::equal_to<char>(), SCILLA_INDEX_SEPARATOR));
+      if (fragments.size() < 3) {
+        LOG_GENERAL(WARNING,
+                    "Error fetching (field_name, type): " << address.hex());
       } else {
-        if (!compareScillaInitJSONs(beforeInitJson, afterInitJson)) {
-          Contract::ContractStorage2::GetContractStorage().PutInitData(
-              address, DataConversion::StringToCharArray(initAfterMigration));
-
-          LOG_GENERAL(INFO, "Init JSON before migration:  "
-                                << initBeforeMigration
-                                << "\n Init JSON after migration: "
-                                << initAfterMigration);
-        } else {
-          LOG_GENERAL(INFO,
-                      "Init JSON before migration same as after migration. Not "
-                      "updated.");
-        }
-      }
-#endif  // MIGRATE_INIT_JSON
-
-      Contract::ContractStorage2::GetContractStorage()
-          .FetchStateJsonForContract(stateAfterMigration, address, "", {},
-                                     true);
-
-      if ((stateBeforeMigration == Json::Value::null) &&
-          (stateAfterMigration != Json::Value::null)) {
-        numContractNullFixedStates++;
-      } else if (!compareStateJSONs(stateBeforeMigration,
-                                    stateAfterMigration)) {
-        LOG_GENERAL(INFO, "States changed for " << address.hex());
-        numContractChangedStates++;
-      } else {
-        numContractUnchangedStates++;
-      }
-
-      std::map<std::string, bytes> types;
-      Contract::ContractStorage2::GetContractStorage()
-          .FetchStateDataForContract(types, address, TYPE_INDICATOR, {}, true);
-      for (auto const& type : types) {
-        vector<string> fragments;
-        boost::split(fragments, type.first,
-                     bind1st(std::equal_to<char>(), SCILLA_INDEX_SEPARATOR));
-        if (fragments.size() < 3) {
-          LOG_GENERAL(WARNING,
-                      "Error fetching (field_name, type): " << address.hex());
-        } else {
-          LOG_GENERAL(
-              INFO, "field=" << fragments[2] << " type="
+        LOG_GENERAL(INFO,
+                    "field=" << fragments[2] << " type="
                              << DataConversion::CharArrayToString(type.second));
-        }
       }
-
-      // fetch all states from temp storage
-      std::map<std::string, bytes> states;
-      Contract::ContractStorage2::GetContractStorage()
-          .FetchStateDataForContract(states, address, "", {}, true);
-
-      // put all states (overwrite) back into persistent storage
-      dev::h256 rootHash;
-      Contract::ContractStorage2::GetContractStorage()
-          .UpdateStateDatasAndToDeletes(address, states, {}, rootHash, false,
-                                        false);
-
-      // update storage root hash for this account
-      account.SetStorageRoot(rootHash);
     }
 
+    // fetch all states from temp storage
+    std::map<std::string, bytes> states;
+    Contract::ContractStorage::GetContractStorage().FetchStateDataForContract(
+        states, address, "", {}, true);
+
+    // put all states (overwrite) back into persistent storage
+    dev::h256 rootHash;
+    Contract::ContractStorage::GetContractStorage()
+        .UpdateStateDatasAndToDeletes(address, account.GetStorageRoot(), states,
+                                      {}, rootHash, false, false);
+
+    // update storage root hash for this account
+    account.SetStorageRoot(rootHash);
+
     this->AddAccount(address, account, true);
+
+    Contract::ContractStorage::GetContractStorage().FetchStateJsonForContract(
+        stateAfterMigration, address, "", {}, true);
+
+    if ((stateBeforeMigration == Json::Value::null) &&
+        (stateAfterMigration != Json::Value::null)) {
+      numContractNullFixedStates++;
+    } else if (!compareStateJSONs(stateBeforeMigration, stateAfterMigration)) {
+      LOG_GENERAL(INFO, "States changed for " << address.hex());
+      numContractChangedStates++;
+    } else {
+      numContractUnchangedStates++;
+    }
   }
 
   if (!contract_address_output_filename.empty()) {
@@ -856,17 +924,17 @@ bool AccountStore::MigrateContractStates(
   }
 
   /// repopulate trie and discard old persistence
-  if (!MoveUpdatesToDisk()) {
+  uint64_t initTrie;
+  if (!MoveUpdatesToDisk(0, initTrie)) {
     LOG_GENERAL(WARNING, "MoveUpdatesToDisk failed");
     return false;
   }
 
   LOG_GENERAL(INFO, "Num contracts with states initialized = "
                         << numContractNullFixedStates);
-  LOG_GENERAL(INFO, "Num contracts with states changed     = "
-                        << numContractChangedStates);
-  LOG_GENERAL(INFO, "Num contracts with states unchanged   = "
+  LOG_GENERAL(
+      INFO, "Num contracts with states changed = " << numContractChangedStates);
+  LOG_GENERAL(INFO, "Num contracts with states unchanged = "
                         << numContractUnchangedStates);
-
   return true;
 }

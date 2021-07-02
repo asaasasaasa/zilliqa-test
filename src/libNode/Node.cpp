@@ -159,6 +159,11 @@ Node::~Node() {}
 
 bool Node::DownloadPersistenceFromS3() {
   LOG_MARKER();
+  AccountStore::GetInstance().SetPurgeStopSignal();
+  while (AccountStore::GetInstance().IsPurgeRunning()) {
+    LOG_GENERAL(INFO, "Purge Already Running");
+    this_thread::sleep_for(chrono::milliseconds(10));
+  }
   string excludembtxns = LOOKUP_NODE_MODE ? "false" : "true";
   return PythonRunner::RunPyFunc("download_incr_DB", "start",
                                  {STORAGE_PATH + "/", excludembtxns},
@@ -196,6 +201,10 @@ bool Node::Install(const SyncType syncType, const bool toRetrieveHistory,
       AddGenesisInfo(SyncType::NO_SYNC);
       this->Prepare(runInitializeGenesisBlocks);
       return false;
+    }
+
+    if (!LOOKUP_NODE_MODE) {
+      AccountStore::GetInstance().PurgeUnnecessary();
     }
 
     if (SyncType::NEW_SYNC == syncType ||
@@ -654,7 +663,6 @@ void Node::WaitForNextTwoBlocksBeforeRejoin() {
     } while (m_mediator.m_lookup->cv_setTxBlockFromSeed.wait_for(
                  lock, chrono::seconds(RECOVERY_SYNC_TIMEOUT)) ==
              cv_status::timeout);
-
     if (m_mediator.m_txBlockChain.GetBlockCount() > oldBlkCount + 1) {
       LOG_GENERAL(INFO, "Received next two txblocks. Ok to rejoin now!")
       break;
@@ -992,6 +1000,7 @@ bool Node::StartRetrieveHistory(const SyncType syncType,
     m_mediator.m_lookup->ProcessEntireShardingStructure();
   } else {
     LoadShardingStructure(true);
+    lock_guard<mutex> g(m_mediator.m_ds->m_mutexMapNodeReputation);
     m_mediator.m_ds->ProcessShardingStructure(
         m_mediator.m_ds->m_shards, m_mediator.m_ds->m_publicKeyToshardIdMap,
         m_mediator.m_ds->m_mapNodeReputation);
@@ -2222,6 +2231,7 @@ void Node::RejoinAsNormal() {
           LOG_GENERAL(WARNING, "AccountStore::RefreshDB failed");
           return;
         }
+
         if (this->Install(SyncType::NORMAL_SYNC, true, true)) {
           break;
         };
@@ -2257,7 +2267,7 @@ bool Node::CleanVariables() {
     return true;
   }
 
-  AccountStore::GetInstance().InitSoft();
+  AccountStore::GetInstance().Init();
   {
     lock_guard<mutex> g(m_mutexShardMember);
     m_myShardMembers.reset(new DequeOfNode);

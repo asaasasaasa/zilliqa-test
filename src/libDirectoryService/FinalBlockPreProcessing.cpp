@@ -685,15 +685,15 @@ bool DirectoryService::OnNodeFinalConsensusError(const bytes& errorMsg,
       return true;
     }
     case FINALCONSENSUSERRORTYPE::DSMBMISSINGTXN: {
-      LOG_GENERAL(INFO, "ErrorType: " << CHECKMICROBLOCK);
+      LOG_GENERAL(INFO, "ErrorType: " << DSMBMISSINGTXN);
       return m_mediator.m_node->OnNodeMissingTxns(errorMsg, offset, from);
     }
     case FINALCONSENSUSERRORTYPE::CHECKFINALBLOCK: {
-      LOG_GENERAL(INFO, "ErrorType: " << CHECKMICROBLOCK);
+      LOG_GENERAL(INFO, "ErrorType: " << CHECKFINALBLOCK);
       return true;
     }
     case FINALCONSENSUSERRORTYPE::DSFBMISSINGMB: {
-      LOG_GENERAL(INFO, "ErrorType: " << CHECKMICROBLOCK);
+      LOG_GENERAL(INFO, "ErrorType: " << DSFBMISSINGMB);
       return OnNodeMissingMicroBlocks(errorMsg, offset, from);
     }
     default:
@@ -1429,7 +1429,7 @@ void DirectoryService::RunConsensusOnFinalBlock() {
   DetachedFunction(1, func1);
 }
 
-void DirectoryService::RemoveDSMicroBlock() {
+bool DirectoryService::RemoveDSMicroBlock() {
   LOG_MARKER();
 
   lock_guard<mutex> g(m_mutexMicroBlocks);
@@ -1446,9 +1446,14 @@ void DirectoryService::RemoveDSMicroBlock() {
 
   m_mediator.m_node->m_microblock = nullptr;
 
-  AccountStore::GetInstance().RevertCommitTemp();
+  if (!AccountStore::GetInstance().RevertCommitTemp()) {
+    LOG_GENERAL(WARNING, "AccountStore::RevertCommitTemp failed");
+    return false;
+  }
 
   AccountStore::GetInstance().InitTemp();
   AccountStore::GetInstance().DeserializeDeltaTemp(m_stateDeltaFromShards, 0);
   AccountStore::GetInstance().SerializeDelta();
+
+  return true;
 }

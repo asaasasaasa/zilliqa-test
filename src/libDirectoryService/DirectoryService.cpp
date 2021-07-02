@@ -88,6 +88,7 @@ void DirectoryService::StartSynchronization(bool clean) {
   }
 
   auto func = [this]() -> void {
+    m_mediator.m_lookup->m_fetchNextTxBlock = true;
     while (m_mediator.m_lookup->GetSyncType() != SyncType::NO_SYNC) {
       m_mediator.m_lookup->ComposeAndSendGetDirectoryBlocksFromSeed(
           m_mediator.m_blocklinkchain.GetLatestIndex() + 1);
@@ -432,7 +433,10 @@ bool DirectoryService::CleanVariables() {
   m_shards.clear();
   m_publicKeyToshardIdMap.clear();
   m_allPoWConns.clear();
-  m_mapNodeReputation.clear();
+  {
+    lock_guard<mutex> g(m_mutexMapNodeReputation);
+    m_mapNodeReputation.clear();
+  }
 
   {
     lock_guard<mutex> g(m_mediator.m_mutexDSCommittee);
@@ -613,7 +617,7 @@ bool DirectoryService::FinishRejoinAsDS(bool fetchShardingStruct) {
                         dsLeader)) {
     auto iterDSLeader = std::find_if(
         dsComm.begin(), dsComm.end(), [dsLeader](const PairOfNode& pubKeyPeer) {
-          return pubKeyPeer.second == dsLeader.second;
+          return pubKeyPeer.first == dsLeader.first;
         });
     if (iterDSLeader != dsComm.end()) {
       SetConsensusLeaderID(iterDSLeader - dsComm.begin());
@@ -663,6 +667,7 @@ bool DirectoryService::FinishRejoinAsDS(bool fetchShardingStruct) {
                   "Didn't receive sharding structure! Try checking next epoch");
     } else {
       m_mediator.m_node->LoadShardingStructure(true);
+      lock_guard<mutex> g(m_mediator.m_ds->m_mutexMapNodeReputation);
       m_mediator.m_ds->ProcessShardingStructure(
           m_mediator.m_ds->m_shards, m_mediator.m_ds->m_publicKeyToshardIdMap,
           m_mediator.m_ds->m_mapNodeReputation);
@@ -1050,6 +1055,7 @@ bool DirectoryService::ProcessCosigsRewardsFromSeed(
       m_totalTxnFees += cogsrews.GetRewards();
     }
   }
+  m_mediator.m_lookup->cv_setCosigRewardsFromSeed.notify_all();
 
   return true;
 }

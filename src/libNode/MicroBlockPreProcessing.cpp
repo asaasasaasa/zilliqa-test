@@ -978,17 +978,40 @@ void Node::ReinstateMemPool(
   }
 }
 
-void Node::PutProcessedInUnconfirmedTxns() {
-  unique_lock<shared_timed_mutex> g(m_unconfirmedTxnsMutex);
+void Node::PutAllTxnsInUnconfirmedTxns() {
+  LOG_MARKER();
+  lock(m_unconfirmedTxnsMutex, m_mutexCreatedTransactions,
+       m_mutexProcessedTransactions);
+  lock_guard<shared_timed_mutex> g(m_unconfirmedTxnsMutex, adopt_lock);
+  lock_guard<mutex> g1(m_mutexCreatedTransactions, adopt_lock);
+  lock_guard<mutex> g2(m_mutexProcessedTransactions, adopt_lock);
 
   uint count = 0;
 
-  for (const auto& t : t_processedTransactions) {
-    m_unconfirmedTxns.emplace(t.first,
-                              TxnStatus::PRESENT_VALID_CONSENSUS_NOT_REACHED);
-    count++;
+  for (const auto& t : m_createdTxns.HashIndex) {
+    if (m_unconfirmedTxns
+            .emplace(t.first, TxnStatus::PRESENT_VALID_CONSENSUS_NOT_REACHED)
+            .second) {
+      count++;
+    }
   }
-  LOG_GENERAL(INFO, "Count of txns " << count);
+
+  for (const auto& t : t_createdTxns.HashIndex) {
+    if (m_unconfirmedTxns
+            .emplace(t.first, TxnStatus::PRESENT_VALID_CONSENSUS_NOT_REACHED)
+            .second) {
+      count++;
+    }
+  }
+
+  for (const auto& t : t_processedTransactions) {
+    if (m_unconfirmedTxns
+            .emplace(t.first, TxnStatus::PRESENT_VALID_CONSENSUS_NOT_REACHED)
+            .second) {
+      count++;
+    }
+  }
+  LOG_GENERAL(INFO, "Count of unconfirmed txns " << count);
 }
 
 TxnStatus Node::IsTxnInMemPool(const TxnHash& txhash) const {
@@ -1041,9 +1064,10 @@ void Node::UpdateBalanceForPreGeneratedAccounts() {
 
 void Node::StartTxnProcessingThread() {
   LOG_MARKER();
-  auto t = [this]() -> void {
-    m_mediator.m_node->m_prePrepRunning = false;
-    if (m_mediator.ToProcessTransaction()) {
+  m_mediator.m_node->m_prePrepRunning = false;
+  if (m_mediator.ToProcessTransaction()) {
+    m_mediator.m_node->m_txnProcessingFinished = false;
+    auto t = [this]() -> void {
       if (m_mediator.m_ds->m_mode == DirectoryService::Mode::IDLE) {
         m_mediator.m_node->ProcessTransactionWhenShardBackup(
             SHARD_MICROBLOCK_GAS_LIMIT);
@@ -1054,9 +1078,9 @@ void Node::StartTxnProcessingThread() {
         m_mediator.m_node->ProcessTransactionWhenShardBackup(
             m_mediator.m_ds->m_microBlockGasLimit);
       }
-    }
-  };
-  DetachedFunction(1, t);
+    };
+    DetachedFunction(1, t);
+  }
 }
 
 bool Node::WaitUntilTxnProcessingDone() {

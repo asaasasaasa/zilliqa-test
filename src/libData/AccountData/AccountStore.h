@@ -68,8 +68,7 @@ class AccountStoreTemp : public AccountStoreSC<std::map<Address, Account>> {
 
 // Singleton class for providing interface related Account System
 class AccountStore
-    : public AccountStoreTrie<dev::OverlayDB,
-                              std::unordered_map<Address, Account>>,
+    : public AccountStoreTrie<std::unordered_map<Address, Account>>,
       Singleton<AccountStore> {
   /// instantiate of AccountStoreTemp, which is serving for the StateDelta
   /// generation
@@ -91,7 +90,7 @@ class AccountStore
 
   /// Scilla IPC server related
   std::shared_ptr<ScillaIPCServer> m_scillaIPCServer;
-  std::unique_ptr<jsonrpc::AbstractServerConnector> m_scillaIPCServerConnector;
+  std::unique_ptr<jsonrpc::UnixDomainSocketServer> m_scillaIPCServerConnector;
 
   AccountStore();
   ~AccountStore();
@@ -103,7 +102,7 @@ class AccountStore
   /// Returns the singleton AccountStore instance.
   static AccountStore& GetInstance();
 
-  bool Serialize(bytes& src, unsigned int offset) const override;
+  bool Serialize(bytes& src, unsigned int offset);
 
   bool Deserialize(const bytes& src, unsigned int offset) override;
 
@@ -135,13 +134,16 @@ class AccountStore
   bool UpdateStateTrieFromTempStateDB();
 
   /// commit the in-memory states into persistent storage
-  bool MoveUpdatesToDisk();
+  bool MoveUpdatesToDisk(const uint64_t& dsBlockNum,
+                         uint64_t& initTrieSnapshotDSEpoch);
 
   /// discard all the changes in memory and reset the states from last
   /// checkpoint in persistent storage
   void DiscardUnsavedUpdates();
   /// repopulate the in-memory data structures from persistent storage
   bool RetrieveFromDisk();
+
+  bool RetrieveFromDiskOld();
 
   /// Get the instance of an account from AccountStoreTemp
   /// [[[WARNING]]] Test utility function, don't use in core protocol
@@ -224,13 +226,19 @@ class AccountStore
   void CommitTempRevertible();
 
   /// revert the AccountStore if previously called CommitTempRevertible
-  void RevertCommitTemp();
+  bool RevertCommitTemp();
 
   /// NotifyTimeout for AccountStoreTemp
   void NotifyTimeoutTemp();
 
   /// clean the data for revert the AccountStore
   void InitRevertibles();
+
+  void PurgeUnnecessary();
+
+  void SetPurgeStopSignal();
+
+  bool IsPurgeRunning();
 
   std::shared_timed_mutex& GetPrimaryMutex() { return m_mutexPrimary; }
 

@@ -31,7 +31,7 @@
 #include "libMessage/Messenger.h"
 #include "libNetwork/Blacklist.h"
 #include "libNetwork/Guard.h"
-#include "libPersistence/ContractStorage2.h"
+#include "libPersistence/ContractStorage.h"
 #include "libUtils/CommonUtils.h"
 #include "libUtils/DataConversion.h"
 #include "libUtils/DetachedFunction.h"
@@ -184,7 +184,11 @@ void DirectoryService::ProcessFinalBlockConsensusWhenDone() {
 
   if (isVacuousEpoch) {
     auto writeStateToDisk = [this]() -> void {
-      if (!AccountStore::GetInstance().MoveUpdatesToDisk()) {
+      if (!AccountStore::GetInstance().MoveUpdatesToDisk(
+              m_mediator.m_dsBlockChain.GetLastBlock()
+                  .GetHeader()
+                  .GetBlockNum(),
+              m_mediator.m_initTrieSnapshotDSEpoch)) {
         LOG_GENERAL(WARNING, "MoveUpdatesToDisk failed, what to do?");
         return;
       } else {
@@ -282,16 +286,18 @@ void DirectoryService::ProcessFinalBlockConsensusWhenDone() {
   }
   m_mediator.m_node->ClearUnconfirmedTxn();
 
-  AccountStore::GetInstance().InitTemp();
-  AccountStore::GetInstance().InitRevertibles();
-  m_stateDeltaFromShards.clear();
   m_allPoWConns.clear();
   ClearDSPoWSolns();
   ResetPoWSubmissionCounter();
-
   if (isVacuousEpoch) {
     SetState(POW_SUBMISSION);
-  } else {
+  }
+
+  AccountStore::GetInstance().InitTemp();
+  AccountStore::GetInstance().InitRevertibles();
+  m_stateDeltaFromShards.clear();
+
+  if (!isVacuousEpoch) {
     SetState(MICROBLOCK_SUBMISSION);
   }
 
@@ -349,7 +355,7 @@ void DirectoryService::ProcessFinalBlockConsensusWhenDone() {
         auto extra_time =
             (m_mediator.m_currentEpochNum % NUM_FINAL_BLOCK_PER_POW != 0)
                 ? 0
-                : EXTRA_TX_DISTRIBUTE_TIME_IN_MS;
+                : EXTRA_TX_DISTRIBUTE_TIME_IN_MS / 1000;
         if (cv_scheduleDSMicroBlockConsensus.wait_for(
                 cv_lk, std::chrono::seconds(MICROBLOCK_TIMEOUT + extra_time)) ==
             std::cv_status::timeout) {
@@ -563,6 +569,20 @@ bool DirectoryService::ProcessFinalBlockConsensusCore(
               "Not in PROCESS_FINALBLOCKCONSENSUS state");
     return false;
   }
+
+#ifdef VC_TEST_FB_SUSPEND_RESPONSE
+  ConsensusCommon::State checkState = m_consensusObject->GetState();
+
+  if (checkState == ConsensusCommon::State::FINALCHALLENGE_DONE &&
+      m_mode == PRIMARY_DS && m_viewChangeCounter == 0 &&
+      m_mediator.m_txBlockChain.GetBlockCount() % NUM_FINAL_BLOCK_PER_POW !=
+          0) {
+    LOG_EPOCH(WARNING, m_mediator.m_currentEpochNum,
+              "I am suspending myself to test viewchange "
+              "(VC_TEST_FB_SUSPEND_RESPONSE)");
+    return false;
+  }
+#endif  // VC_TEST_FB_SUSPEND_RESPONSE
 
   if (!m_consensusObject->ProcessMessage(message, offset, from)) {
     return false;

@@ -193,6 +193,7 @@ bool Node::LoadUnavailableMicroBlockHashes(const TxBlock& finalBlock,
   if (!LOOKUP_NODE_MODE) {
     if (!foundMB) {
       LOG_GENERAL(INFO, "No MB for my shard itself in FB!");
+      PutAllTxnsInUnconfirmedTxns();
     } else if (foundMismatchedMB) {
       LOG_GENERAL(INFO,
                   "Received shard MB in FB. But since I had failed MB "
@@ -928,8 +929,6 @@ bool Node::ProcessFinalBlockCore(uint64_t& dsBlockNumber,
 
   bool toSendTxnToLookup = false;
 
-  const bool& toSendPendingTxn = !(IsUnconfirmedTxnEmpty());
-
   bool isVacuousEpoch = m_mediator.GetIsVacuousEpoch();
   m_isVacuousEpochBuffer = isVacuousEpoch;
 
@@ -987,6 +986,8 @@ bool Node::ProcessFinalBlockCore(uint64_t& dsBlockNumber,
     return false;
   }
 
+  const bool& toSendPendingTxn = !(IsUnconfirmedTxnEmpty());
+
   if (!isVacuousEpoch) {
     if (!StoreFinalBlock(txBlock)) {
       LOG_GENERAL(WARNING, "StoreFinalBlock failed!");
@@ -1035,7 +1036,11 @@ bool Node::ProcessFinalBlockCore(uint64_t& dsBlockNumber,
     }
 
     auto writeStateToDisk = [this]() -> void {
-      if (!AccountStore::GetInstance().MoveUpdatesToDisk()) {
+      if (!AccountStore::GetInstance().MoveUpdatesToDisk(
+              m_mediator.m_dsBlockChain.GetLastBlock()
+                  .GetHeader()
+                  .GetBlockNum(),
+              m_mediator.m_initTrieSnapshotDSEpoch)) {
         LOG_GENERAL(WARNING, "MoveUpdatesToDisk failed, what to do?");
         // return false;
       } else {
@@ -1479,7 +1484,7 @@ bool Node::ProcessMBnForwardTransaction(
     // soft confirmation
     SoftConfirmForwardedTransactions(entry);
     // invoke txn distribution
-    if (!m_mediator.GetIsVacuousEpoch() &&
+    if (!ARCHIVAL_LOOKUP && !m_mediator.GetIsVacuousEpoch() &&
         ((m_mediator.m_currentEpochNum + NUM_VACUOUS_EPOCHS + 1) %
              NUM_FINAL_BLOCK_PER_POW !=
          0)) {

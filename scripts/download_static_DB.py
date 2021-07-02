@@ -21,6 +21,7 @@ import re
 import requests
 import shutil
 import sys
+import tarfile
 import time
 import xml.etree.ElementTree as ET
 from clint.textui import progress
@@ -36,7 +37,7 @@ MAX_WORKER_JOBS = 50
 S3_MULTIPART_CHUNK_SIZE_IN_MB = 8
 MAX_FAILED_DOWNLOAD_RETRY = 2
 BASE_PATH = os.path.dirname(os.path.realpath(sys.argv[0]))
-STORAGE_PATH = BASE_PATH+'/persistence'
+STORAGE_PATH1 = BASE_PATH+'/historical-data'
 mutex = Lock()
 DOWNLOADED_LIST = []
 DOWNLOAD_STARTED_LIST = []
@@ -210,16 +211,44 @@ def GetAllObjectsFromS3(url, folderName=""):
 	print("[" + str(datetime.datetime.now()) + "]"+" All objects from " + url + " completed!")
 	return True
 
-def GetBlockchainDataFromS3():
-	os.chdir(STORAGE_PATH)
-	return GetAllObjectsFromS3(getURL(), PERSISTENCE_SNAPSHOT_NAME)
+def DownloadCompressedFile(url):
+	local_filename = url.split('/')[-1]
+	with requests.get(url, stream=True) as r:
+		try:
+			r.raise_for_status()
+		except requests.exceptions.HTTPError as e:
+			# Whoops it wasn't a 200
+			print(e)
+			return False
+		with open(local_filename, 'wb') as f:
+			for chunk in r.iter_content(chunk_size=8192): 
+				f.write(chunk)
+				f.flush()
+	return True
+
+def GetBlockchainDataFromS3(compressed):
+	os.chdir(STORAGE_PATH1)
+	if compressed:
+		file_path = getURL() + "/" + PERSISTENCE_SNAPSHOT_NAME + "/" + TESTNET_NAME + "/" + TESTNET_NAME + ".tar.gz"
+		file_name = TESTNET_NAME + ".tar.gz"
+		print("File: " + file_path)
+		if DownloadCompressedFile(file_path):
+			tar = tarfile.open(file_name, "r:gz")
+			tar.extractall()
+			tar.close()
+			os.remove(file_name)
+			return True
+		else:
+			return False
+	else:
+		return GetAllObjectsFromS3(getURL(), PERSISTENCE_SNAPSHOT_NAME)
 
 def run():
 	failed_retry_download_count = 0
 	while (True):
 		try:
 			print("[" + str(datetime.datetime.now()) + "] Started downloading static persistence from blockchain-data")
-			if (failed_retry_download_count > MAX_FAILED_DOWNLOAD_RETRY) or GetBlockchainDataFromS3():
+			if (failed_retry_download_count > MAX_FAILED_DOWNLOAD_RETRY) or GetBlockchainDataFromS3(True):
 				break
 			print("Error downloading!! Will try again")
 		except Exception as e:
@@ -232,18 +261,31 @@ def run():
 	print("[" + str(datetime.datetime.now()) + "] Done!")
 	return True
 
-def start(new_storage_path):
-	global STORAGE_PATH
-	if new_storage_path:
-		if os.path.isabs(new_storage_path):
-			STORAGE_PATH = new_storage_path + "/persistence"
+def start(new_STORAGE_PATH1):
+	global STORAGE_PATH1
+	if new_STORAGE_PATH1:
+		if os.path.isabs(new_STORAGE_PATH1):
+			STORAGE_PATH1 = new_STORAGE_PATH1 + "/historical-data"
 		else:
 			# Get absolute path w.r.t to script
-			STORAGE_PATH = os.path.join(BASE_PATH, new_storage_path) + "/persistence"
-	# Create persistence folder if it does not exist
-	if not os.path.exists(STORAGE_PATH):
-		os.makedirs(STORAGE_PATH)
-	return run()
+			STORAGE_PATH1 = os.path.join(BASE_PATH, new_STORAGE_PATH1) + "/historical-data"
+	# Create historical-data folder if it does not exist
+	if not os.path.exists(STORAGE_PATH1):
+		os.makedirs(STORAGE_PATH1)
+		return run()
+	
+	if os.path.isdir(STORAGE_PATH1):
+		if not os.listdir(STORAGE_PATH1): # empty dir
+			# download the static db
+			return run()
+		else:    
+			print("Already have historical blockchain-data!. Skip downloading again!")
+	else:
+		# Not a directory but some file. Delete file & create directory
+		os.remove(STORAGE_PATH1)
+		os.makedirs(STORAGE_PATH1)
+		# download the static db
+		return run()
 
 if __name__ == "__main__":
 	start(sys.argv[1] if len(sys.argv) >= 2 else '')

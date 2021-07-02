@@ -97,6 +97,10 @@ const unsigned int UPGRADE_TARGET_DS_NUM{
 const string STORAGE_PATH{ReadConstantString("STORAGE_PATH", "node.general.")};
 const unsigned int NUM_EPOCHS_PER_PERSISTENT_DB{
     ReadConstantNumeric("NUM_EPOCHS_PER_PERSISTENT_DB")};
+const bool KEEP_HISTORICAL_STATE{ReadConstantString("KEEP_HISTORICAL_STATE") ==
+                                 "true"};
+const unsigned int NUM_DS_EPOCHS_STATE_HISTORY{
+    ReadConstantNumeric("NUM_DS_EPOCHS_STATE_HISTORY")};
 
 // Version constants
 const unsigned int MSG_VERSION{
@@ -142,6 +146,10 @@ const unsigned int P2P_SEED_CONNECT_PORT{
 
 const unsigned int P2P_SEED_SERVER_CONNECTION_TIMEOUT{
     ReadConstantNumeric("P2P_SEED_SERVER_CONNECTION_TIMEOUT", "node.seed.")};
+
+const unsigned int FETCH_DS_BLOCK_LIMIT{
+    ReadConstantNumeric("FETCH_DS_BLOCK_LIMIT", "node.seed.")};
+
 // RemotestorageDB constants
 const string REMOTESTORAGE_DB_HOST{
     ReadConstantString("REMOTESTORAGE_DB_HOST", "node.remotestorageDB.")};
@@ -239,10 +247,14 @@ const unsigned int GETSHARD_TIMEOUT_IN_SECONDS{
     ReadConstantNumeric("GETSHARD_TIMEOUT_IN_SECONDS", "node.epoch_timing.")};
 const unsigned int GETSTATEDELTAS_TIMEOUT_IN_SECONDS{ReadConstantNumeric(
     "GETSTATEDELTAS_TIMEOUT_IN_SECONDS", "node.epoch_timing.")};
+const unsigned int GETCOSIGREWARDS_TIMEOUT_IN_SECONDS{ReadConstantNumeric(
+    "GETCOSIGREWARDS_TIMEOUT_IN_SECONDS", "node.epoch_timing.")};
 const unsigned int RETRY_REJOINING_TIMEOUT{
     ReadConstantNumeric("RETRY_REJOINING_TIMEOUT", "node.epoch_timing.")};
 const unsigned int RETRY_GETSTATEDELTAS_COUNT{
     ReadConstantNumeric("RETRY_GETSTATEDELTAS_COUNT", "node.epoch_timing.")};
+const unsigned int RETRY_COSIGREWARDS_COUNT{
+    ReadConstantNumeric("RETRY_COSIGREWARDS_COUNT", "node.epoch_timing.")};
 const unsigned int MAX_FETCHMISSINGMBS_NUM{
     ReadConstantNumeric("MAX_FETCHMISSINGMBS_NUM", "node.epoch_timing.")};
 const unsigned int LAST_N_TXBLKS_TOCHECK_FOR_MISSINGMBS{ReadConstantNumeric(
@@ -382,6 +394,8 @@ const unsigned int PENDING_TXN_QUERY_NUM_EPOCHS{
     ReadConstantNumeric("PENDING_TXN_QUERY_NUM_EPOCHS", "node.jsonrpc.")};
 const unsigned int PENDING_TXN_QUERY_MAX_RESULTS{
     ReadConstantNumeric("PENDING_TXN_QUERY_MAX_RESULTS", "node.jsonrpc.")};
+const bool CONNECTION_IO_USE_EPOLL{
+    ReadConstantString("CONNECTION_IO_USE_EPOLL", "node.jsonrpc.") == "true"};
 
 // Network composition constants
 const unsigned int COMM_SIZE{
@@ -524,6 +538,8 @@ const bool CONTRACT_STATES_MIGRATED{
     ReadConstantString("CONTRACT_STATES_MIGRATED", "node.recovery.") == "true"};
 const unsigned int MAX_IPCHANGE_REQUEST_LIMIT{
     ReadConstantNumeric("MAX_IPCHANGE_REQUEST_LIMIT", "node.recovery.")};
+const unsigned int MAX_REJOIN_NETWORK_ATTEMPTS{
+    ReadConstantNumeric("MAX_REJOIN_NETWORK_ATTEMPTS", "node.recovery.")};
 
 // Smart contract constants
 const bool ENABLE_SC{ReadConstantString("ENABLE_SC", "node.smart_contract.") ==
@@ -544,6 +560,8 @@ const string SCILLA_CHECKER{
     ReadConstantString("SCILLA_CHECKER", "node.smart_contract.")};
 const string SCILLA_BINARY{
     ReadConstantString("SCILLA_BINARY", "node.smart_contract.")};
+const string SCILLA_OBJ_CACHE{
+    ReadConstantString("SCILLA_OBJ_CACHE", "node.smart_contract.")};    
 const string SCILLA_FILES{
     ReadConstantString("SCILLA_FILES", "node.smart_contract.")};
 const string SCILLA_LOG{
@@ -584,6 +602,8 @@ const unsigned int SCILLA_SERVER_PENDING_IN_MS{
     ReadConstantNumeric("SCILLA_SERVER_PENDING_IN_MS", "node.smart_contract.")};
 const bool SCILLA_VM_DEV{
     ReadConstantString("SCILLA_VM_DEV", "node.smart_contract.") == "true"};
+const unsigned int SCILLA_SERVER_LOOP_WAIT_MICROSECONDS{ReadConstantNumeric(
+    "SCILLA_SERVER_LOOP_WAIT_MICROSECONDS", "node.smart_contract.")};
 
 // Test constants
 const bool ENABLE_CHECK_PERFORMANCE_LOG{

@@ -18,7 +18,6 @@
 #ifndef ZILLIQA_SRC_LIBDATA_ACCOUNTDATA_ACCOUNTSTORESC_H_
 #define ZILLIQA_SRC_LIBDATA_ACCOUNTDATA_ACCOUNTSTORESC_H_
 
-#include <ScillaVM/JITD.h>
 #include <json/json.h>
 #include <atomic>
 #include <condition_variable>
@@ -99,9 +98,6 @@ class AccountStoreSC : public AccountStoreBase<MAP> {
 
   /// Scilla IPC server
   std::shared_ptr<ScillaIPCServer> m_scillaIPCServer;
-
-  /// ScillaVM compiled code cache
-  std::unique_ptr<ScillaVM::ScillaCacheManager> m_scillaCodeCache;
 
   /// A set of contract account address pending for storageroot updating
   std::set<Address> m_storageRootUpdateBuffer;
@@ -191,7 +187,7 @@ class AccountStoreSC : public AccountStoreBase<MAP> {
           extlibs_export);
 
   /// invoke scilla interpreter
-  void InvokeInterpreter(INVOKE_TYPE invoke_type,
+  void InvokeInterpreter(INVOKE_TYPE invoke_type, const Address& addr,
                          std::string& interprinterPrint,
                          const uint32_t& version, bool is_library,
                          const uint64_t& available_gas,
@@ -208,7 +204,6 @@ class AccountStoreSC : public AccountStoreBase<MAP> {
   bool ParseContractCheckerOutput(const Address& addr,
                                   const std::string& checkerPrint,
                                   TransactionReceipt& receipt,
-								  std::string &llvm_ir,
                                   std::map<std::string, bytes>& metadata,
                                   uint64_t& gasRemained,
                                   bool is_library = false);

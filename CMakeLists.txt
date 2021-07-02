@@ -37,7 +37,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 if(NOT TARGET jsonrpc-project)
-    include(InstallJsonrpccpp)
+   include(InstallJsonrpccpp)
 endif()
 
 include(InstallG3log)
@@ -182,6 +182,11 @@ if(VC_TEST_VC_PRECHECK_2)
     add_definitions(-DVC_TEST_VC_PRECHECK_2)
 endif()
 
+if(VC_TEST_FB_SUSPEND_RESPONSE)
+    message(STATUS "VC 9 test enabled")
+    add_definitions(-DVC_TEST_FB_SUSPEND_RESPONSE)
+endif()
+
 # For Merging DSMB into FINALBLOCK
 if(DM_TEST_DM_LESSTXN_ONE)
     message(STATUS "DM 1 test enabled")
@@ -242,12 +247,12 @@ include(FindProtobuf)
 set(protobuf_MODULE_COMPATIBLE TRUE)
 find_package(Protobuf CONFIG REQUIRED)
 
-if (NOT IS_DIRECTORY $ENV{SCILLAVM_INSTALL_DIR})
-    message(FATAL_ERROR "SCILLAVM_INSTALL_DIR environment variable not set")
+if (NOT IS_DIRECTORY $ENV{SCILLARTL_INSTALL_DIR})
+    message(FATAL_ERROR "SCILLARTL_INSTALL_DIR environment variable not set")
 else()
-    message(STATUS "Using ScillaVM from $ENV{SCILLAVM_INSTALL_DIR}")
-    include_directories($ENV{SCILLAVM_INSTALL_DIR}/include)
-    link_libraries($ENV{SCILLAVM_INSTALL_DIR}/lib/libScillaJITD.so $ENV{SCILLAVM_INSTALL_DIR}/lib/libScillaRTL.so)
+    message(STATUS "Using SCILLARTL from $ENV{SCILLARTL_INSTALL_DIR}")
+    include_directories($ENV{SCILLARTL_INSTALL_DIR}/include)
+    link_libraries($ENV{SCILLARTL_INSTALL_DIR}/lib/libScillaRTL.so)
 endif()
 
 include_directories(${PROTOBUF_INSTALL_DIR}/include)

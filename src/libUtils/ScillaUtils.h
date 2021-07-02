@@ -22,6 +22,8 @@
 
 #include <boost/multiprecision/cpp_int.hpp>
 
+#include "libData/AccountData/Address.h"
+
 class ScillaUtils {
  public:
   static bool PrepareRootPathWVersion(const uint32_t& scilla_version,
@@ -32,6 +34,7 @@ class ScillaUtils {
 
   /// get the command for invoking the scilla_checker while deploying
   static Json::Value GetContractCheckerJson(const std::string& root_w_version,
+                                            const Address& addr,
                                             bool is_library,
                                             const uint64_t& available_gas);
 

@@ -457,7 +457,7 @@ void DirectoryService::StartNextTxEpoch() {
       auto extra_time =
           (m_mediator.m_currentEpochNum % NUM_FINAL_BLOCK_PER_POW != 0)
               ? 0
-              : EXTRA_TX_DISTRIBUTE_TIME_IN_MS;
+              : EXTRA_TX_DISTRIBUTE_TIME_IN_MS / 1000;
       if (cv_scheduleDSMicroBlockConsensus.wait_for(
               cv_lk, std::chrono::seconds(MICROBLOCK_TIMEOUT + extra_time)) ==
           std::cv_status::timeout) {
@@ -610,7 +610,7 @@ void DirectoryService::StartFirstTxEpoch() {
         auto extra_time =
             (m_mediator.m_currentEpochNum % NUM_FINAL_BLOCK_PER_POW != 0)
                 ? 0
-                : EXTRA_TX_DISTRIBUTE_TIME_IN_MS;
+                : EXTRA_TX_DISTRIBUTE_TIME_IN_MS / 1000;
         if (cv_scheduleDSMicroBlockConsensus.wait_for(
                 cv_lk, std::chrono::seconds(MICROBLOCK_TIMEOUT + extra_time)) ==
             std::cv_status::timeout) {
@@ -742,12 +742,15 @@ void DirectoryService::ProcessDSBlockConsensusWhenDone() {
 
   // Now we can update the sharding structure and transaction sharing
   // assignments
-  if (m_mode == BACKUP_DS) {
-    m_shards = move(m_tempShards);
-    m_publicKeyToshardIdMap = move(m_tempPublicKeyToshardIdMap);
-    m_mapNodeReputation = move(m_tempMapNodeReputation);
-  } else if (m_mode == PRIMARY_DS) {
-    RemoveReputationOfNodeFailToJoin(m_shards, m_mapNodeReputation);
+  {
+    lock_guard<mutex> g(m_mutexMapNodeReputation);
+    if (m_mode == BACKUP_DS) {
+      m_shards = move(m_tempShards);
+      m_publicKeyToshardIdMap = move(m_tempPublicKeyToshardIdMap);
+      m_mapNodeReputation = move(m_tempMapNodeReputation);
+    } else if (m_mode == PRIMARY_DS) {
+      RemoveReputationOfNodeFailToJoin(m_shards, m_mapNodeReputation);
+    }
   }
 
   m_mediator.m_node->m_myshardId = m_shards.size();

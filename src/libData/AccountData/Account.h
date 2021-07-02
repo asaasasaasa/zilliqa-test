@@ -184,11 +184,11 @@ class Account : public AccountBase {
   Json::Value GetInitJson();
 
   /// !temp represents getting whole states
-  void GetUpdatedStates(std::map<std::string, bytes>& t_states,
-                        std::vector<std::string>& toDeleteIndices,
+  bool GetUpdatedStates(std::map<std::string, bytes>& t_states,
+                        std::set<std::string>& toDeleteIndices,
                         bool temp) const;
 
-  void UpdateStates(const Address& addr,
+  bool UpdateStates(const Address& addr,
                     const std::map<std::string, bytes>& t_states,
                     const std::vector<std::string>& toDeleteIndices, bool temp,
                     bool revertible = false);

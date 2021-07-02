@@ -53,6 +53,7 @@ Json::Value ScillaUtils::GetBlockStateJson(const uint64_t& BlockNum) {
 }
 
 Json::Value ScillaUtils::GetContractCheckerJson(const string& root_w_version,
+                                                const Address &addr,
                                                 bool is_library,
                                                 const uint64_t& available_gas) {
   Json::Value ret;
@@ -70,6 +71,8 @@ Json::Value ScillaUtils::GetContractCheckerJson(const string& root_w_version,
   ret["argv"].append(to_string(available_gas));
   ret["argv"].append("-contractinfo");
   ret["argv"].append("-jsonerrors");
+  ret["argv"].append("-o");
+  ret["argv"].append(SCILLA_OBJ_CACHE + "/" + addr.hex() + ".bc");
   return ret;
 }
 
