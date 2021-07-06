@@ -1309,6 +1309,14 @@ bool ContractStorage::IsPurgeRunning() {
   return m_stateTrie.db()->IsPurgeRunning();
 }
 
+void ContractStorage::PrintTrie() {
+  LOG_MARKER();
+  for (const auto& i : m_stateTrie) {
+    dev::h256 _h(i.first);
+    LOG_GENERAL(INFO, _h.hex());
+  }
+}
+
 void ContractStorage::InitTempStateCore() {
   t_stateDataMap.clear();
   t_indexToBeDeleted.clear();

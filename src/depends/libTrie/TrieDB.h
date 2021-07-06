@@ -1098,9 +1098,10 @@ namespace dev
 
             if(r.isNull())
             {
+                LOG_GENERAL(INFO,"Could not find: "<<_orig.toHash<h256>());
                 LOG_GENERAL(FATAL,
                             "assertion failed (" << __FILE__ << ":" << __LINE__ << ": "
-                                                 << __FUNCTION__ << ")");
+                                          << __FUNCTION__ << ")");
             }
 
             isRemovable = true;

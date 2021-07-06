@@ -91,11 +91,16 @@ namespace dev
         // WriteGuard l(x_this);
         unique_lock<shared_timed_mutex> lock(x_this);
 // #endif
+       
         auto it = m_main.find(_h);
         if (it != m_main.end())
         {
             it->second.first = _v.toString();
             it->second.second++;
+            if(it->second.second > 1)
+            {
+                LOG_GENERAL(INFO, "Refcount: "<<it->second.second);
+            }
         }
         else {
             m_main[_h] = make_pair(_v.toString(), 1);
@@ -190,5 +195,15 @@ namespace dev
             if (i.second.second)
                 ret.insert(i.first);
         return ret;
+    }
+
+    unsigned int MemoryDB::GetRefCount(const dev::h256& _key)
+    {
+        auto it = m_main.find(_key);
+        if(it!=m_main.end())
+        {
+            return it->second.second;
+        }
+        return 0;
     }
 }

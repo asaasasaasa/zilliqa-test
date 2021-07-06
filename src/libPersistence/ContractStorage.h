@@ -219,6 +219,8 @@ class ContractStorage : public Singleton<ContractStorage> {
 
   /// Refresh all DB
   bool RefreshAll();
+
+  void PrintTrie();
 };
 
 }  // namespace Contract

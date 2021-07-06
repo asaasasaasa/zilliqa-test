@@ -53,6 +53,8 @@ namespace dev
 
         h256Hash keys() const;
 
+        unsigned int GetRefCount(h256 const& _key);
+
     protected:
 // #if DEV_GUARDED_DB
         mutable std::shared_timed_mutex x_this;

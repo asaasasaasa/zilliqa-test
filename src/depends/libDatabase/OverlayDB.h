@@ -50,6 +50,7 @@ namespace dev
 		void kill(h256 const& _h);
 
 		bytes lookupAux(h256 const& _h) const;
+		unsigned int GetRefCount(h256 const& _key);
 
 	protected:
 		// using MemoryDB::clear;

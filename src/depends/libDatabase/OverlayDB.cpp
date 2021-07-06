@@ -132,4 +132,9 @@ namespace dev
 	{
 		MemoryDB::kill(_h);
 	}
+
+	unsigned int OverlayDB::GetRefCount(h256 const& _key)
+	{
+		return MemoryDB::GetRefCount(_key);
+	}
 }

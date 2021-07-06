@@ -350,6 +350,10 @@ bool LevelDB::BatchInsert(const std::unordered_map<dev::h256, std::pair<std::str
 
     for (const auto & i: m_main) {
         if (i.second.second) {
+            if(i.first.hex() == "5bcb9baed2d6c41876d696c76bf8102477caf9e5e0aa0e862ac15c696b1f9d3b")
+            {
+                LOG_GENERAL(INFO,"Found "<<i.second.second);
+            }
             batch.Put(leveldb::Slice(i.first.hex()),
                       leveldb::Slice(i.second.first.data(), i.second.first.size()));
         }

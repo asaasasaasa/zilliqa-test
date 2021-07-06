@@ -75,6 +75,8 @@ bool TraceableDB::ExecutePurge(const uint64_t& dsBlockNum, bool purgeAll) {
 
   leveldb::Iterator* iter =
       m_purgeDB.GetDB()->NewIterator(leveldb::ReadOptions());
+  uint total = 0;
+  uint empty = 0;
   iter->SeekToFirst();
   for (; iter->Valid(); iter->Next()) {
     if (purgeAll && m_stopSignal) {
@@ -98,6 +100,15 @@ bool TraceableDB::ExecutePurge(const uint64_t& dsBlockNum, bool purgeAll) {
         for (const auto& t : toPurge) {
           LOG_GENERAL(INFO, "purging: " << t.hex()
                                         << " t_dsBlockNum: " << t_dsBlockNum);
+          const auto& value = m_levelDB.Lookup(t.hex());
+          const auto& refCount = OverlayDB::GetRefCount(t);
+          if (value.empty()) {
+            empty++;
+          }
+          if (refCount > 0) {
+            LOG_GENERAL(INFO, "RefCount: " << refCount);
+          }
+          total++;
         }
       }
 
@@ -105,6 +116,7 @@ bool TraceableDB::ExecutePurge(const uint64_t& dsBlockNum, bool purgeAll) {
       m_purgeDB.DeleteKey(iter->key().ToString());
     }
   }
+  LOG_GENERAL(INFO, "Total: " << total << " Empty: " << empty);
 
   return true;
 }

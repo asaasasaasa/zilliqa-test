@@ -240,6 +240,15 @@ bool IsolatedServer::RetrieveHistory() {
   }
   m_currEpochGas = 0;
 
+  AccountStore::GetInstance().PrintContractTrie();
+
+  AccountStore::GetInstance().PurgeUnnecessary();
+  while (AccountStore::GetInstance().IsPurgeRunning()) {
+    sleep(1);
+    continue;
+  }
+  LOG_GENERAL(INFO, "Stopping..");
+
   return true;
 }
 
@@ -266,7 +275,8 @@ Json::Value IsolatedServer::CreateTransaction(const Json::Value& _json) {
       shared_lock<shared_timed_mutex> lock(
           AccountStore::GetInstance().GetPrimaryMutex());
 
-      const Account* sender = AccountStore::GetInstance().GetAccount(fromAddr);
+      const Account* sender =
+          AccountStore::GetInstance().GetAccount(fromAddr, true);
 
       if (!ValidateTxn(tx, fromAddr, sender, m_gasPrice)) {
         return ret;
@@ -350,7 +360,7 @@ Json::Value IsolatedServer::CreateTransaction(const Json::Value& _json) {
     AccountStore::GetInstance().CleanNewLibrariesCacheTemp();
 
     AccountStore::GetInstance().SerializeDelta();
-    AccountStore::GetInstance().CommitTemp();
+    AccountStore::GetInstance().CommitTempRevertible();
 
     if (!m_timeDelta) {
       AccountStore::GetInstance().InitTemp();
