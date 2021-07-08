@@ -620,6 +620,12 @@ void AccountDeltaToProtobuf(const Account* oldAccount,
     if (fullCopy ||
         newAccount.GetStorageRoot() != oldAccount->GetStorageRoot()) {
       accbase.SetStorageRoot(newAccount.GetStorageRoot());
+      LOG_GENERAL(INFO, "Old Storage root of account: "
+                            << oldAccount->GetAddress().hex() << " is "
+                            << oldAccount->GetStorageRoot());
+      LOG_GENERAL(INFO, "New Storage root of account: "
+                            << newAccount.GetAddress().hex() << " is "
+                            << newAccount.GetStorageRoot());
 
       map<std::string, bytes> t_states;
       vector<std::string> deletedIndices;
@@ -721,14 +727,16 @@ bool ProtobufToAccountDelta(const ProtoAccount& protoAccount, Account& account,
 
       map<string, bytes> t_states;
       vector<std::string> toDeleteIndices;
-
+      LOG_GENERAL(INFO, "From Protobuf , t_states:");
       for (const auto& entry : protoAccount.storage2()) {
         t_states.emplace(entry.key(),
                          DataConversion::StringToCharArray(entry.data()));
+        LOG_GENERAL(INFO, "Key=" << entry.key() << "Val:" << entry.data());
       }
-
+      LOG_GENERAL(INFO, "From Protobuf , toDeleteIndices:");
       for (const auto& entry : protoAccount.todelete()) {
         toDeleteIndices.emplace_back(entry);
+        LOG_GENERAL(INFO, "Key=" << entry);
       }
 
       account.UpdateStates(addr, t_states, toDeleteIndices, temp, revertible);

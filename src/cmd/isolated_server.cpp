@@ -194,6 +194,8 @@ int main(int argc, const char* argv[]) {
       }
     }
 
+    isolatedServer->StartBlocknumIncrement();
+
     while (true) {
       ;  // keep server running
     }

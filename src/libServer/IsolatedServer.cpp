@@ -124,8 +124,6 @@ IsolatedServer::IsolatedServer(Mediator& mediator,
         jsonrpc::Procedure("GetLatestTxBlock", jsonrpc::PARAMS_BY_POSITION,
                            jsonrpc::JSON_OBJECT, NULL),
         &LookupServer::GetLatestTxBlockI);
-
-    StartBlocknumIncrement();
   }
 }
 
@@ -208,6 +206,8 @@ bool IsolatedServer::RetrieveHistory() {
     LOG_GENERAL(WARNING, "Retrieval of states and tx block failed");
     return false;
   }
+
+  m_retriever->RetrieveTxBlocks();
   TxBlockSharedPtr txblock;
   bool ret = BlockStorage::GetBlockStorage().GetLatestTxBlock(txblock);
   if (ret) {
@@ -254,10 +254,10 @@ Json::Value IsolatedServer::CreateTransaction(const Json::Value& _json) {
       senderBalance = sender->GetBalance();
     }
 
-    if (senderNonce + 1 != tx.GetNonce()) {
+    /*if (senderNonce + 1 != tx.GetNonce()) {
       throw JsonRpcException(RPC_INVALID_PARAMETER,
                              "Expected Nonce: " + to_string(senderNonce + 1));
-    }
+    }*/
 
     if (senderBalance < tx.GetAmount()) {
       throw JsonRpcException(RPC_INVALID_PARAMETER,
@@ -324,12 +324,28 @@ Json::Value IsolatedServer::CreateTransaction(const Json::Value& _json) {
       throwError = true;
     }
 
-    AccountStore::GetInstance().ProcessStorageRootUpdateBufferTemp();
-    AccountStore::GetInstance().CleanNewLibrariesCacheTemp();
+    /*
+        AccountStore::GetInstance().InitTemp();
+        // AccountStore::GetInstance().CommitTemp();
 
-    AccountStore::GetInstance().SerializeDelta();
-    AccountStore::GetInstance().CommitTemp();
+        if (!AccountStore::GetInstance().UpdateAccountsTemp(m_blocknum,
+                                                            3  // Arbitrary
+       values
+                                                            ,
+                                                            true, tx, txreceipt,
+                                                            error_code)) {
+          throwError = true;
+        }
 
+        AccountStore::GetInstance().ProcessStorageRootUpdateBufferTemp();
+        AccountStore::GetInstance().CleanNewLibrariesCacheTemp();
+
+        AccountStore::GetInstance().SerializeDelta();
+        AccountStore::GetInstance().CommitTemp();
+        LOG_GENERAL(INFO, "State delta hash after VC= "
+                              <<
+       AccountStore::GetInstance().GetStateDeltaHash());
+    */
     if (!m_timeDelta) {
       AccountStore::GetInstance().InitTemp();
     }
@@ -497,6 +513,20 @@ TxBlock IsolatedServer::GenerateTxBlock() {
 }
 
 void IsolatedServer::PostTxBlock() {
+  AccountStore::GetInstance().ProcessStorageRootUpdateBufferTemp();
+  AccountStore::GetInstance().CleanNewLibrariesCacheTemp();
+
+  AccountStore::GetInstance().SerializeDelta();
+  AccountStore::GetInstance().CommitTempRevertible();
+  LOG_GENERAL(INFO, "State delta hash before reverting commit ="
+                        << AccountStore::GetInstance().GetStateDeltaHash());
+
+  AccountStore::GetInstance().RevertCommitTemp();
+  AccountStore::GetInstance().InitTemp();
+
+  LOG_GENERAL(INFO, "State delta hash after reverting commit = "
+                        << AccountStore::GetInstance().GetStateDeltaHash());
+
   lock_guard<mutex> g(m_blockMutex);
   const TxBlock& txBlock = GenerateTxBlock();
   if (ENABLE_WEBSOCKET) {
@@ -513,18 +543,17 @@ void IsolatedServer::PostTxBlock() {
     // send event logs
     WebsocketServer::GetInstance().SendOutMessages();
   }
-  m_mediator.m_txBlockChain.AddBlock(txBlock);
+  //  m_mediator.m_txBlockChain.AddBlock(txBlock);
 
   bytes serializedTxBlock;
   txBlock.Serialize(serializedTxBlock, 0);
-  if (!BlockStorage::GetBlockStorage().PutTxBlock(
-          txBlock.GetHeader().GetBlockNum(), serializedTxBlock)) {
-    LOG_GENERAL(WARNING, "BlockStorage::PutTxBlock failed " << txBlock);
-  }
+  // if (!BlockStorage::GetBlockStorage().PutTxBlock(
+  //        txBlock.GetHeader().GetBlockNum(), serializedTxBlock)) {
+  //  LOG_GENERAL(WARNING, "BlockStorage::PutTxBlock failed " << txBlock);
+  //}
 
-  AccountStore::GetInstance().MoveUpdatesToDisk();
-  AccountStore::GetInstance().InitTemp();
-
+  //  AccountStore::GetInstance().MoveUpdatesToDisk();
+  //  AccountStore::GetInstance().InitTemp();
   m_blocknum++;
   m_currEpochGas = 0;
 }

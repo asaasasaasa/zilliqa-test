@@ -225,7 +225,7 @@ bool Retriever::RetrieveTxBlocks() {
     }
   }
 
-  m_mediator.m_node->AddBlock(*latestTxBlock);
+  // m_mediator.m_node->AddBlock(*latestTxBlock);
 
   return true;
 }

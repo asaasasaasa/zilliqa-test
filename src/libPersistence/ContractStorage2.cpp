@@ -449,17 +449,23 @@ bool ContractStorage2::FetchExternalStateValue(
 }
 
 void ContractStorage2::DeleteByPrefix(const string& prefix) {
+  LOG_MARKER();
   auto p = t_stateDataMap.lower_bound(prefix);
   while (p != t_stateDataMap.end() &&
          p->first.compare(0, prefix.size(), prefix) == 0) {
     t_indexToBeDeleted.emplace(p->first);
+    LOG_GENERAL(INFO,
+                "Added to t_indexToBeDeleted from t_stateDataMap " << p->first);
     ++p;
   }
 
   p = m_stateDataMap.lower_bound(prefix);
-  while (p != m_stateDataMap.end() &&
-         p->first.compare(0, prefix.size(), prefix) == 0) {
+  while ((p != m_stateDataMap.end() &&
+          p->first.compare(0, prefix.size(), prefix) == 0) &&
+         (m_indexToBeDeleted.find(p->first) == m_indexToBeDeleted.end())) {
     t_indexToBeDeleted.emplace(p->first);
+    LOG_GENERAL(
+        INFO, "Added to t_indexToBeDeleted from m_statedatamap: " << p->first);
     ++p;
   }
 
@@ -474,6 +480,7 @@ void ContractStorage2::DeleteByPrefix(const string& prefix) {
     for (; it->Valid() &&
            it->key().ToString().compare(0, prefix.size(), prefix) == 0;
          it->Next()) {
+      LOG_GENERAL(INFO, "Added to t_indexToBeDeleted from DB: " << p->first);
       t_indexToBeDeleted.emplace(it->key().ToString());
     }
   }
@@ -858,10 +865,10 @@ bool ContractStorage2::CleanEmptyMapPlaceholders(const string& key) {
 
 void ContractStorage2::UpdateStateData(const string& key, const bytes& value,
                                        bool cleanEmpty) {
-  if (LOG_SC) {
-    LOG_GENERAL(INFO, "key: " << key << " value: "
-                              << DataConversion::CharArrayToString(value));
-  }
+  // if (LOG_SC) {
+  LOG_GENERAL(INFO, "key: " << key << " value: "
+                            << DataConversion::CharArrayToString(value));
+  //}
 
   if (cleanEmpty) {
     CleanEmptyMapPlaceholders(key);
@@ -878,9 +885,9 @@ void ContractStorage2::UpdateStateData(const string& key, const bytes& value,
 bool ContractStorage2::UpdateStateValue(const dev::h160& addr, const bytes& q,
                                         unsigned int q_offset, const bytes& v,
                                         unsigned int v_offset) {
-  if (LOG_SC) {
-    LOG_MARKER();
-  }
+  // if (LOG_SC) {
+  LOG_MARKER();
+  //}
 
   lock_guard<mutex> g(m_stateDataMutex);
 
@@ -930,9 +937,9 @@ bool ContractStorage2::UpdateStateValue(const dev::h160& addr, const bytes& q,
     string parent_key = key;
     key += query.indices().Get(query.indices().size() - 1) +
            SCILLA_INDEX_SEPARATOR;
-    if (LOG_SC) {
-      LOG_GENERAL(INFO, "Delete key: " << key);
-    }
+    // if (LOG_SC) {
+    LOG_GENERAL(INFO, "Delete key: " << key);
+    //}
     DeleteByPrefix(key);
 
     if (CheckIfKeyIsEmpty(parent_key, true)) {
@@ -943,7 +950,10 @@ bool ContractStorage2::UpdateStateValue(const dev::h160& addr, const bytes& q,
         LOG_GENERAL(WARNING, "empty_mval SerializeToArray failed");
         return false;
       }
+      LOG_GENERAL(INFO, "Updated parent_key: " << parent_key);
       UpdateStateData(parent_key, dst);
+    } else {
+      LOG_GENERAL(INFO, "parent_key: " << parent_key << " is NONEMPTY");
     }
   } else {
     for (const auto& index : query.indices()) {
@@ -1037,20 +1047,33 @@ void ContractStorage2::UpdateStateDatasAndToDeletes(
         if (m_stateDataMap.find(state.first) != m_stateDataMap.end()) {
           r_stateDataMap[state.first] = m_stateDataMap[state.first];
         } else {
+          LOG_GENERAL(INFO, "r_stateDataMap key = " << state.first);
           r_stateDataMap[state.first] = {};
         }
+      }
+      if (state.first.find("0x96d9b2ba785f8ef7c8b211a19efeea2841852a03") !=
+          std::string::npos) {
+        LOG_GENERAL(INFO,
+                    "Added to m_stateDataMap Key: "
+                        << state.first << "Val: "
+                        << DataConversion::CharArrayToString(state.second));
       }
       m_stateDataMap[state.first] = state.second;
       auto pos = m_indexToBeDeleted.find(state.first);
       if (pos != m_indexToBeDeleted.end()) {
         m_indexToBeDeleted.erase(pos);
         if (revertible) {
+          LOG_GENERAL(INFO, "r_indexToBeDeleted false(newly deleted) key = "
+                                << state.first);
           r_indexToBeDeleted.emplace(state.first, false);
         }
       }
     }
     for (const auto& toDelete : toDeleteIndices) {
       if (revertible) {
+        LOG_GENERAL(INFO,
+                    "r_indexToBeDeleted true(newly added) key = " << toDelete);
+        // here toDelete seem to be wrong. what if its already doesnot exist.
         r_indexToBeDeleted.emplace(toDelete, true);
       }
       m_indexToBeDeleted.emplace(toDelete);

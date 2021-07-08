@@ -33,7 +33,6 @@ class IsolatedServer : public LookupServer,
   const PairOfKey m_key;
   uint64_t m_currEpochGas{0};
 
-  bool StartBlocknumIncrement();
   TxBlock GenerateTxBlock();
   void PostTxBlock();
 
@@ -41,6 +40,8 @@ class IsolatedServer : public LookupServer,
   IsolatedServer(Mediator& mediator, jsonrpc::AbstractServerConnector& server,
                  const uint64_t& blocknum, const uint32_t& timeDelta);
   ~IsolatedServer() = default;
+
+  bool StartBlocknumIncrement();
 
   inline virtual void CreateTransactionI(const Json::Value& request,
                                          Json::Value& response) {
