@@ -555,7 +555,12 @@ void Node::ProcessTransactionWhenShardLeader(
   cv_TxnProcFinished.notify_all();
   PutTxnsInTempDataBase(t_processedTransactions);
   if (ENABLE_TXNS_BACKUP) {
-    SaveTxnsToS3(t_processedTransactions);
+    if (m_mediator.m_ds->m_mode == DirectoryService::Mode::PRIMARY_DS) {
+      LOG_GENERAL(INFO, "Chetan Adding delay of 15 secs");
+      this_thread::sleep_for(chrono::seconds(15));
+    } else {
+      SaveTxnsToS3(t_processedTransactions);
+    }
   }
 
   if (LOG_PARAMETERS) {
