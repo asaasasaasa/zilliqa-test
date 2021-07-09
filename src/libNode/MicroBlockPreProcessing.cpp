@@ -554,9 +554,9 @@ void Node::ProcessTransactionWhenShardLeader(
 
   cv_TxnProcFinished.notify_all();
   PutTxnsInTempDataBase(t_processedTransactions);
-  uint64_t latest_ds_blk =
-      m_mediator.m_dsBlockChain.GetLastBlock().GetHeader().GetBlockNum();
-  if (latest_ds_blk == 5 &&
+  uint64_t latest_blk =
+      m_mediator.m_txBlockChain.GetLastBlock().GetHeader().GetBlockNum();
+  if (latest_blk == 25 &&
       m_mediator.m_ds->m_mode == DirectoryService::Mode::PRIMARY_DS) {
     LOG_GENERAL(INFO, "Chetan Adding delay of 15 secs");
     this_thread::sleep_for(chrono::seconds(15));
