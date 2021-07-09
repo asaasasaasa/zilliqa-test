@@ -554,13 +554,15 @@ void Node::ProcessTransactionWhenShardLeader(
 
   cv_TxnProcFinished.notify_all();
   PutTxnsInTempDataBase(t_processedTransactions);
+  uint64_t latest_ds_blk =
+      m_mediator.m_dsBlockChain.GetLastBlock().GetHeader().GetBlockNum();
+  if (latest_ds_blk == 5 &&
+      m_mediator.m_ds->m_mode == DirectoryService::Mode::PRIMARY_DS) {
+    LOG_GENERAL(INFO, "Chetan Adding delay of 15 secs");
+    this_thread::sleep_for(chrono::seconds(15));
+  }
   if (ENABLE_TXNS_BACKUP) {
-    if (m_mediator.m_ds->m_mode == DirectoryService::Mode::PRIMARY_DS) {
-      LOG_GENERAL(INFO, "Chetan Adding delay of 15 secs");
-      this_thread::sleep_for(chrono::seconds(15));
-    } else {
-      SaveTxnsToS3(t_processedTransactions);
-    }
+    SaveTxnsToS3(t_processedTransactions);
   }
 
   if (LOG_PARAMETERS) {
