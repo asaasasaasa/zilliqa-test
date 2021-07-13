@@ -750,7 +750,8 @@ bool AccountStore::MigrateContractStates(
   unsigned int numContractNullFixedStates = 0;
 
   for (const auto& i : m_state) {
-    Address address(i.first);
+    Address address(DataConversion::CharArrayToString(
+        bytes(i.first.begin(), i.first.end())));
 
     LOG_GENERAL(INFO, "Address: " << address.hex());
 
