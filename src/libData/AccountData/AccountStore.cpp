@@ -728,7 +728,9 @@ bool compareStateJSONs(const Json::Value& Before, const Json::Value& After) {
 
   return true;
 }
-
+bool AccountStore::PatchStateDB(const string& old_state_path) {
+  return m_state.db()->PatchDB(old_state_path);
+}
 bool AccountStore::MigrateContractStates(
     bool ignoreCheckerFailure, bool disambiguation,
     const string& contract_address_output_filename,

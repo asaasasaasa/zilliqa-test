@@ -126,6 +126,26 @@ bool TraceableDB::ExecutePurge(const uint64_t& dsBlockNum,
   return true;
 }
 
+bool TraceableDB::PatchDB(const string& old_state_path) {
+  string empty_path;
+  LevelDB old_state_db("state", old_state_path, empty_path);
+  old_state_db.Reopen();
+
+  auto iter = old_state_db.GetDB()->NewIterator(leveldb::ReadOptions());
+  iter->SeekToFirst();
+  uint count = 0;
+  for (; iter->Valid(); iter->Next()) {
+    const auto& key = iter->key().ToString();
+    count++;
+    if (!m_levelDB.Exists(key)) {
+      LOG_GENERAL(INFO, "Found: " << key);
+      m_levelDB.Insert(key, iter->value());
+    }
+  }
+  LOG_GENERAL(INFO, "Num keys: " << count);
+  return true;
+}
+
 bool TraceableDB::RefreshDB() {
   return m_levelDB.RefreshDB() && m_purgeDB.RefreshDB();
 }

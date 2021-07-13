@@ -39,6 +39,8 @@ class Retriever {
       bool ignore_checker, bool disambiguation,
       const std::string& contract_address_output_filename,
       const std::string& normal_address_output_filename);
+
+  bool PatchStateDB(const std::string& old_state_path);
   void CleanAll();
 
  private:

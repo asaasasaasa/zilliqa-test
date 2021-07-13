@@ -46,6 +46,8 @@ class TraceableDB : public dev::OverlayDB {
   bool IsPurgeRunning() { return m_purgeRunning; }
 
   bool RefreshDB();
+
+  bool PatchDB(const std::string& old_state_path);
 };
 
 #endif  // ZILLIQA_SRC_LIBDATA_DATASTRUCTURES_TRACEABLEDB_H_

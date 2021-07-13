@@ -44,6 +44,7 @@ int main(int argc, const char* argv[]) {
   string disambiguation_str;
   string contract_address_output_filename;
   string normal_address_output_filename;
+  string patch_db_str;
 
   try {
     po::options_description desc("Options");
@@ -60,7 +61,9 @@ int main(int argc, const char* argv[]) {
         "empty")("normal_addresses,n",
                  po::value<string>(&normal_address_output_filename),
                  "indicate the filename to output non-contract addresses, no "
-                 "output if empty");
+                 "output if empty")("patch_db,p",
+                                    po::value<string>(&patch_db_str),
+                                    "patch state db with path");
 
     po::variables_map vm;
     try {
@@ -85,12 +88,20 @@ int main(int argc, const char* argv[]) {
 
     const bool ignore_checker = (ignore_checker_str == "true");
     const bool disambiguation = (disambiguation_str == "true");
+    const bool doPatchDB = !patch_db_str.empty();
 
     LOG_GENERAL(INFO, "Begin");
     Mediator mediator(key, peer);
     Retriever retriever(mediator);
 
     LOG_GENERAL(INFO, "Start Retrieving States");
+
+    if (doPatchDB) {
+      if (!retriever.PatchStateDB(patch_db_str)) {
+        LOG_GENERAL(FATAL, "Failed");
+      }
+      return SUCCESS;
+    }
 
     if (!retriever.RetrieveStatesOld()) {
       LOG_GENERAL(FATAL, "RetrieveStates failed");

@@ -205,6 +205,7 @@ string LevelDB::Lookup(const dev::h256 & key) const
     leveldb::Status s = m_db->Get(leveldb::ReadOptions(), leveldb::Slice(key.hex()), &value);
     if (!s.ok())
     {
+        LOG_GENERAL(INFO,"Key: "<<key.hex());
         log_error(s); 
         return "";
     }

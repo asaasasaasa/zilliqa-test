@@ -392,3 +392,7 @@ bool Retriever::MigrateContractStates(
       ignore_checker, disambiguation, contract_address_output_filename,
       normal_address_output_filename);
 }
+
+bool Retriever::PatchStateDB(const std::string& old_state_path) {
+  return AccountStore::GetInstance().PatchStateDB(old_state_path);
+}
