@@ -583,7 +583,7 @@ bool DirectoryService::ProcessFinalBlockConsensusCore(
           0) {
     LOG_EPOCH(WARNING, m_mediator.m_currentEpochNum,
               "I am suspending myself to test viewchange "
-              "(VC_TEST_FB_SUSPEND_RESPONSE)");
+              "(VC_TEST_FB_SUSPEND_RESPONSE) ");
     return false;
   }
 #endif  // VC_TEST_FB_SUSPEND_RESPONSE
