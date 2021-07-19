@@ -24,6 +24,7 @@
 
 #include "libCrypto/Sha2.h"
 #include "libMessage/Messenger.h"
+#include "libUtils/CommonUtils.h"
 #include "libUtils/DataConversion.h"
 #include "libUtils/JsonUtils.h"
 
@@ -106,7 +107,6 @@ bool SerializeToArray(const T& protoMessage, bytes& dst,
 string ContractStorage::GenerateStorageKey(const dev::h160& addr,
                                            const string& vname,
                                            const vector<string>& indices) {
-  LOG_MARKER();
   string ret = addr.hex();
   if (!vname.empty()) {
     ret += SCILLA_INDEX_SEPARATOR + vname + SCILLA_INDEX_SEPARATOR;
@@ -598,6 +598,8 @@ bool ContractStorage::FetchStateJsonForContract(Json::Value& _json,
 
   std::map<std::string, bytes> states;
   FetchStateDataForContract(states, address, vname, indices, temp);
+  LOG_GENERAL(INFO, " states map count=" << states.count());
+  DetachedFunction(1, CommonUtils::ReleaseSTLMemoryCache);
 
   for (const auto& state : states) {
     vector<string> fragments;
@@ -681,8 +683,6 @@ bool ContractStorage::FetchStateJsonForContract(Json::Value& _json,
 
 void ContractStorage::FetchStateDataForKey(map<string, bytes>& states,
                                            const string& key, bool temp) {
-  LOG_MARKER();
-
   std::map<std::string, bytes>::iterator p;
   if (temp) {
     p = t_stateDataMap.lower_bound(key);
