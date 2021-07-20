@@ -540,6 +540,7 @@ class Lookup : public Executable {
   // Enable/Disable josn rpc
   std::mutex m_mutexJsonRpcPortOpen;
   std::condition_variable cv_jsonRpcPortOpen;
+  std::atomic<bool> m_jsonRpcListenerStopDone{false};
 
   std::atomic<bool> m_rejoinInProgress{false};
 
