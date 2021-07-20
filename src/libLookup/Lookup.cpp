@@ -3353,7 +3353,7 @@ bool Lookup::CommitTxBlocks(const vector<TxBlock>& txBlocks) {
           cv_setRejoinRecovery.notify_all();
           m_isFirstLoop = true;
           auto startJsonRpc = [this]() mutable -> void {
-            LOG_GENERAL(INFO, "In startJsonRpc func");
+            LOG_GENERAL(INFO, "Starting jsonrpc listener");
             std::lock_guard<mutex> lock(m_mutexJsonRpc);
             if (m_lookupServer) {
               if (m_lookupServer->StartListening()) {
@@ -4495,6 +4495,7 @@ void Lookup::RejoinAsNewLookup(bool fromLookup) {
       this_thread::sleep_for(chrono::seconds(SEED_SYNC_SMALL_PULL_INTERVAL));
     }
     auto func1 = [this]() mutable -> void {
+      LOG_GENERAL(INFO, "Stopping jsonrpc listener");
       std::lock_guard<mutex> lock(m_mutexJsonRpc);
       if (m_lookupServer) {
         m_lookupServer->StopListening();
@@ -4629,6 +4630,7 @@ void Lookup::RejoinAsLookup(bool fromLookup) {
   if (m_mediator.m_lookup->GetSyncType() == SyncType::NO_SYNC) {
     m_mediator.m_lookup->SetSyncType(SyncType::LOOKUP_SYNC);
     auto func1 = [this]() mutable -> void {
+      LOG_GENERAL(INFO, "Stopping jsonrpc listener");
       std::lock_guard<mutex> lock(m_mutexJsonRpc);
       if (m_lookupServer) {
         m_lookupServer->StopListening();
