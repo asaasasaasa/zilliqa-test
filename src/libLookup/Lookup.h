@@ -537,7 +537,7 @@ class Lookup : public Executable {
   std::mutex m_mutexCvSetRejoinRecovery;
   std::condition_variable cv_setRejoinRecovery;
 
-  // Enable/Disable josn rpc
+  // Enable/Disable jsonrpc port
   std::mutex m_mutexJsonRpc;
 
   std::atomic<bool> m_rejoinInProgress{false};

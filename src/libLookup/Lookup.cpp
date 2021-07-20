@@ -3354,8 +3354,7 @@ bool Lookup::CommitTxBlocks(const vector<TxBlock>& txBlocks) {
           m_isFirstLoop = true;
           auto startJsonRpc = [this]() mutable -> void {
             LOG_GENERAL(INFO, "In startJsonRpc func");
-            std::lock_guard<mutex> lock(
-                m_mediator.m_lookup->m_mutexJsonRpc);
+            std::lock_guard<mutex> lock(m_mediator.m_lookup->m_mutexJsonRpc);
             if (m_lookupServer) {
               if (m_lookupServer->StartListening()) {
                 LOG_GENERAL(INFO, "API Server started to listen again");
