@@ -3354,26 +3354,21 @@ bool Lookup::CommitTxBlocks(const vector<TxBlock>& txBlocks) {
           m_isFirstLoop = true;
           auto startJsonRpc = [this]() mutable -> void {
             LOG_GENERAL(INFO, "In startJsonRpc func");
-            std::unique_lock<std::mutex> cv_lk(m_mutexJsonRpcPortOpen);
-            if (m_jsonRpcListenerStopDone ||
-                (m_mediator.m_lookup->cv_jsonRpcPortOpen.wait_for(
-                     cv_lk,
-                     std::chrono::seconds(JSON_RPC_PORT_START_STOP_INTERVAL)) !=
-                 std::cv_status::timeout)) {
-              if (m_lookupServer) {
-                if (m_lookupServer->StartListening()) {
-                  LOG_GENERAL(INFO, "API Server started to listen again");
-                } else {
-                  LOG_GENERAL(WARNING, "API Server couldn't start");
-                }
+            std::lock_guard<mutex> lock(
+                m_mediator.m_lookup->m_mutexJsonRpc);
+            if (m_lookupServer) {
+              if (m_lookupServer->StartListening()) {
+                LOG_GENERAL(INFO, "API Server started to listen again");
+              } else {
+                LOG_GENERAL(WARNING, "API Server couldn't start");
               }
+            }
 
-              if (m_stakingServer) {
-                if (m_stakingServer->StartListening()) {
-                  LOG_GENERAL(INFO, "Staking Server started to listen again");
-                } else {
-                  LOG_GENERAL(WARNING, "Staking Server couldn't start");
-                }
+            if (m_stakingServer) {
+              if (m_stakingServer->StartListening()) {
+                LOG_GENERAL(INFO, "Staking Server started to listen again");
+              } else {
+                LOG_GENERAL(WARNING, "Staking Server couldn't start");
               }
             }
           };
@@ -4501,6 +4496,7 @@ void Lookup::RejoinAsNewLookup(bool fromLookup) {
       this_thread::sleep_for(chrono::seconds(SEED_SYNC_SMALL_PULL_INTERVAL));
     }
     auto func1 = [this]() mutable -> void {
+      std::lock_guard<mutex> lock(m_mediator.m_lookup->m_mutexJsonRpc);
       if (m_lookupServer) {
         m_lookupServer->StopListening();
         LOG_GENERAL(INFO, "API Server stopped listen for syncing");
@@ -4509,8 +4505,6 @@ void Lookup::RejoinAsNewLookup(bool fromLookup) {
         m_stakingServer->StopListening();
         LOG_GENERAL(INFO, "Staking Server stopped listen for syncing");
       }
-      m_mediator.m_lookup->cv_jsonRpcPortOpen.notify_all();
-      m_mediator.m_lookup->m_jsonRpcListenerStopDone = true;
     };
     DetachedFunction(1, func1);
 
@@ -4580,6 +4574,7 @@ void Lookup::RejoinAsNewLookup(bool fromLookup) {
 
 bool Lookup::StartJsonRpcPort() {
   LOG_MARKER();
+  std::lock_guard<mutex> lock(m_mediator.m_lookup->m_mutexJsonRpc);
   if (m_lookupServer) {
     if (m_lookupServer->StartListening()) {
       LOG_GENERAL(INFO, "API Server started to listen again");
@@ -4602,6 +4597,7 @@ bool Lookup::StartJsonRpcPort() {
 
 bool Lookup::StopJsonRpcPort() {
   LOG_MARKER();
+  std::lock_guard<mutex> lock(m_mediator.m_lookup->m_mutexJsonRpc);
   if (m_lookupServer) {
     if (!m_lookupServer->StopListening()) {
       LOG_GENERAL(INFO, "API Server couldn't be stopped");
@@ -4634,6 +4630,7 @@ void Lookup::RejoinAsLookup(bool fromLookup) {
   if (m_mediator.m_lookup->GetSyncType() == SyncType::NO_SYNC) {
     m_mediator.m_lookup->SetSyncType(SyncType::LOOKUP_SYNC);
     auto func1 = [this]() mutable -> void {
+      std::lock_guard<mutex> lock(m_mediator.m_lookup->m_mutexJsonRpc);
       if (m_lookupServer) {
         m_lookupServer->StopListening();
         LOG_GENERAL(INFO, "API Server stopped listen for syncing");
@@ -4642,8 +4639,6 @@ void Lookup::RejoinAsLookup(bool fromLookup) {
         m_stakingServer->StopListening();
         LOG_GENERAL(INFO, "Staking Server stopped listen for syncing");
       }
-      m_mediator.m_lookup->cv_jsonRpcPortOpen.notify_all();
-      m_mediator.m_lookup->m_jsonRpcListenerStopDone = true;
     };
 
     DetachedFunction(1, func1);
