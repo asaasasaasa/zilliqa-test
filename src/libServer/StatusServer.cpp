@@ -531,6 +531,22 @@ bool StatusServer::DisablePoW() {
   return true;
 }
 
+bool StatusServer::DisableJsonRpcPort() {
+  if (!LOOKUP_NODE_MODE) {
+    throw JsonRpcException(RPC_INVALID_REQUEST,
+                           "Not to be queried on other than lookups");
+  }
+  return m_mediator.m_lookup->StopJsonRpcPort();
+}
+
+bool StatusServer::EnableJsonRpcPort() {
+  if (!LOOKUP_NODE_MODE) {
+    throw JsonRpcException(RPC_INVALID_REQUEST,
+                           "Not to be queried on other than lookups");
+  }
+  return m_mediator.m_lookup->StartJsonRpcPort();
+}
+
 bool StatusServer::ToggleDisableTxns() {
   if (!LOOKUP_NODE_MODE) {
     throw JsonRpcException(RPC_INVALID_REQUEST,

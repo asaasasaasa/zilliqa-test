@@ -3351,22 +3351,31 @@ bool Lookup::CommitTxBlocks(const vector<TxBlock>& txBlocks) {
           m_rejoinInProgress = false;
           m_rejoinNetworkAttempts = 0;  // reset rejoining attempts
           cv_setRejoinRecovery.notify_all();
-          if (m_lookupServer) {
-            if (m_lookupServer->StartListening()) {
-              LOG_GENERAL(INFO, "API Server started to listen again");
-            } else {
-              LOG_GENERAL(WARNING, "API Server couldn't start");
-            }
-          }
           m_isFirstLoop = true;
+          auto startJsonRpc = [this]() mutable -> void {
+            std::unique_lock<std::mutex> cv_lk(m_mutexJsonRpcPortOpen);
+            if (m_mediator.m_lookup->cv_jsonRpcPortOpen.wait_for(
+                    cv_lk,
+                    std::chrono::seconds(JSON_RPC_PORT_START_STOP_INTERVAL)) !=
+                std::cv_status::timeout) {
+              if (m_lookupServer) {
+                if (m_lookupServer->StartListening()) {
+                  LOG_GENERAL(INFO, "API Server started to listen again");
+                } else {
+                  LOG_GENERAL(WARNING, "API Server couldn't start");
+                }
+              }
 
-          if (m_stakingServer) {
-            if (m_stakingServer->StartListening()) {
-              LOG_GENERAL(INFO, "Staking Server started to listen again");
-            } else {
-              LOG_GENERAL(WARNING, "Staking Server couldn't start");
+              if (m_stakingServer) {
+                if (m_stakingServer->StartListening()) {
+                  LOG_GENERAL(INFO, "Staking Server started to listen again");
+                } else {
+                  LOG_GENERAL(WARNING, "Staking Server couldn't start");
+                }
+              }
             }
-          }
+          };
+          DetachedFunction(1, startJsonRpc);
         }
         m_currDSExpired = false;
         // If seed node, start Pull if this seed opted for this approach
@@ -4498,6 +4507,7 @@ void Lookup::RejoinAsNewLookup(bool fromLookup) {
         m_stakingServer->StopListening();
         LOG_GENERAL(INFO, "Staking Server stopped listen for syncing");
       }
+      m_mediator.m_lookup->cv_jsonRpcPortOpen.notify_all();
     };
     DetachedFunction(1, func1);
 
@@ -4565,6 +4575,47 @@ void Lookup::RejoinAsNewLookup(bool fromLookup) {
   }
 }
 
+bool Lookup::StartJsonRpcPort() {
+  if (m_lookupServer) {
+    if (m_lookupServer->StartListening()) {
+      LOG_GENERAL(INFO, "API Server started to listen again");
+    } else {
+      LOG_GENERAL(WARNING, "API Server couldn't start");
+      return false;
+    }
+  }
+
+  if (m_stakingServer) {
+    if (m_stakingServer->StartListening()) {
+      LOG_GENERAL(INFO, "Staking Server started to listen again");
+    } else {
+      LOG_GENERAL(WARNING, "Staking Server couldn't start");
+      return false;
+    }
+  }
+  return true;
+}
+
+bool Lookup::StopJsonRpcPort() {
+  if (m_lookupServer) {
+    if (!m_lookupServer->StopListening()) {
+      LOG_GENERAL(INFO, "API Server couldn't be stopped");
+      return false;
+    } else {
+      LOG_GENERAL(INFO, "API Server stopped from status api");
+    }
+  }
+  if (m_stakingServer) {
+    if (!m_stakingServer->StopListening()) {
+      LOG_GENERAL(INFO, " Staking Server couldn't be stopped");
+      return false;
+    } else {
+      LOG_GENERAL(INFO, "Staking Server stopped from status api");
+    }
+  }
+  return true;
+}
+
 void Lookup::RejoinAsLookup(bool fromLookup) {
   if (!LOOKUP_NODE_MODE) {
     LOG_GENERAL(WARNING,
@@ -4586,6 +4637,7 @@ void Lookup::RejoinAsLookup(bool fromLookup) {
         m_stakingServer->StopListening();
         LOG_GENERAL(INFO, "Staking Server stopped listen for syncing");
       }
+      m_mediator.m_lookup->cv_jsonRpcPortOpen.notify_all();
     };
 
     DetachedFunction(1, func1);

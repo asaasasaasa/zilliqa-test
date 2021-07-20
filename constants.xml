@@ -184,6 +184,7 @@
         <PENDING_TXN_QUERY_NUM_EPOCHS>3</PENDING_TXN_QUERY_NUM_EPOCHS>
         <PENDING_TXN_QUERY_MAX_RESULTS>1000</PENDING_TXN_QUERY_MAX_RESULTS>
         <CONNECTION_IO_USE_EPOLL>true</CONNECTION_IO_USE_EPOLL>
+        <JSON_RPC_PORT_START_STOP_INTERVAL>180</JSON_RPC_PORT_START_STOP_INTERVAL>
     </jsonrpc>
     <network_composition>
         <!-- Shard size will be automatically calculated if COMM_SIZE = 0 -->

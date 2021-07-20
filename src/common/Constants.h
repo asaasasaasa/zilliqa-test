@@ -315,6 +315,7 @@ extern const unsigned int NUM_TXNS_PER_PAGE;
 extern const unsigned int PENDING_TXN_QUERY_NUM_EPOCHS;
 extern const unsigned int PENDING_TXN_QUERY_MAX_RESULTS;
 extern const bool CONNECTION_IO_USE_EPOLL;
+extern const unsigned int JSON_RPC_PORT_START_STOP_INTERVAL;
 
 // Network composition constants
 extern const unsigned int COMM_SIZE;
