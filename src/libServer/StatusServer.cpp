@@ -186,6 +186,14 @@ StatusServer::StatusServer(Mediator& mediator,
       jsonrpc::Procedure("ToggleGetPendingTxns", jsonrpc::PARAMS_BY_POSITION,
                          jsonrpc::JSON_OBJECT, NULL),
       &StatusServer::ToggleGetPendingTxnsI);
+  this->bindAndAddMethod(
+      jsonrpc::Procedure("EnableJsonRpcPort", jsonrpc::PARAMS_BY_POSITION,
+                         jsonrpc::JSON_OBJECT, NULL),
+      &StatusServer::EnableJsonRpcPortI);
+  this->bindAndAddMethod(
+      jsonrpc::Procedure("DisableJsonRpcPort", jsonrpc::PARAMS_BY_POSITION,
+                         jsonrpc::JSON_OBJECT, NULL),
+      &StatusServer::DisableJsonRpcPortI);
 }
 
 string StatusServer::GetLatestEpochStatesUpdated() {

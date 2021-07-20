@@ -3354,7 +3354,7 @@ bool Lookup::CommitTxBlocks(const vector<TxBlock>& txBlocks) {
           m_isFirstLoop = true;
           auto startJsonRpc = [this]() mutable -> void {
             LOG_GENERAL(INFO, "In startJsonRpc func");
-            std::lock_guard<mutex> lock(m_mediator.m_lookup->m_mutexJsonRpc);
+            std::lock_guard<mutex> lock(m_mutexJsonRpc);
             if (m_lookupServer) {
               if (m_lookupServer->StartListening()) {
                 LOG_GENERAL(INFO, "API Server started to listen again");
@@ -4495,7 +4495,7 @@ void Lookup::RejoinAsNewLookup(bool fromLookup) {
       this_thread::sleep_for(chrono::seconds(SEED_SYNC_SMALL_PULL_INTERVAL));
     }
     auto func1 = [this]() mutable -> void {
-      std::lock_guard<mutex> lock(m_mediator.m_lookup->m_mutexJsonRpc);
+      std::lock_guard<mutex> lock(m_mutexJsonRpc);
       if (m_lookupServer) {
         m_lookupServer->StopListening();
         LOG_GENERAL(INFO, "API Server stopped listen for syncing");
@@ -4573,7 +4573,7 @@ void Lookup::RejoinAsNewLookup(bool fromLookup) {
 
 bool Lookup::StartJsonRpcPort() {
   LOG_MARKER();
-  std::lock_guard<mutex> lock(m_mediator.m_lookup->m_mutexJsonRpc);
+  std::lock_guard<mutex> lock(m_mutexJsonRpc);
   if (m_lookupServer) {
     if (m_lookupServer->StartListening()) {
       LOG_GENERAL(INFO, "API Server started to listen again");
@@ -4596,7 +4596,7 @@ bool Lookup::StartJsonRpcPort() {
 
 bool Lookup::StopJsonRpcPort() {
   LOG_MARKER();
-  std::lock_guard<mutex> lock(m_mediator.m_lookup->m_mutexJsonRpc);
+  std::lock_guard<mutex> lock(m_mutexJsonRpc);
   if (m_lookupServer) {
     if (!m_lookupServer->StopListening()) {
       LOG_GENERAL(INFO, "API Server couldn't be stopped");
@@ -4629,7 +4629,7 @@ void Lookup::RejoinAsLookup(bool fromLookup) {
   if (m_mediator.m_lookup->GetSyncType() == SyncType::NO_SYNC) {
     m_mediator.m_lookup->SetSyncType(SyncType::LOOKUP_SYNC);
     auto func1 = [this]() mutable -> void {
-      std::lock_guard<mutex> lock(m_mediator.m_lookup->m_mutexJsonRpc);
+      std::lock_guard<mutex> lock(m_mutexJsonRpc);
       if (m_lookupServer) {
         m_lookupServer->StopListening();
         LOG_GENERAL(INFO, "API Server stopped listen for syncing");
