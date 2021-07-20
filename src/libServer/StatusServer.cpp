@@ -532,6 +532,7 @@ bool StatusServer::DisablePoW() {
 }
 
 bool StatusServer::DisableJsonRpcPort() {
+  LOG_MARKER();
   if (!LOOKUP_NODE_MODE) {
     throw JsonRpcException(RPC_INVALID_REQUEST,
                            "Not to be queried on other than lookups");
@@ -540,6 +541,7 @@ bool StatusServer::DisableJsonRpcPort() {
 }
 
 bool StatusServer::EnableJsonRpcPort() {
+  LOG_MARKER();
   if (!LOOKUP_NODE_MODE) {
     throw JsonRpcException(RPC_INVALID_REQUEST,
                            "Not to be queried on other than lookups");

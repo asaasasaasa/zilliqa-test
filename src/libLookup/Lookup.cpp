@@ -3353,6 +3353,7 @@ bool Lookup::CommitTxBlocks(const vector<TxBlock>& txBlocks) {
           cv_setRejoinRecovery.notify_all();
           m_isFirstLoop = true;
           auto startJsonRpc = [this]() mutable -> void {
+            LOG_GENERAL(INFO, "In startJsonRpc func");
             std::unique_lock<std::mutex> cv_lk(m_mutexJsonRpcPortOpen);
             if (m_mediator.m_lookup->cv_jsonRpcPortOpen.wait_for(
                     cv_lk,
@@ -4576,6 +4577,7 @@ void Lookup::RejoinAsNewLookup(bool fromLookup) {
 }
 
 bool Lookup::StartJsonRpcPort() {
+  LOG_MARKER();
   if (m_lookupServer) {
     if (m_lookupServer->StartListening()) {
       LOG_GENERAL(INFO, "API Server started to listen again");
@@ -4597,6 +4599,7 @@ bool Lookup::StartJsonRpcPort() {
 }
 
 bool Lookup::StopJsonRpcPort() {
+  LOG_MARKER();
   if (m_lookupServer) {
     if (!m_lookupServer->StopListening()) {
       LOG_GENERAL(INFO, "API Server couldn't be stopped");
