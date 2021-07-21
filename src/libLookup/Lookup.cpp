@@ -4575,20 +4575,19 @@ void Lookup::RejoinAsNewLookup(bool fromLookup) {
 bool Lookup::StartJsonRpcPort() {
   LOG_MARKER();
   std::lock_guard<mutex> lock(m_mutexJsonRpc);
-  if (m_lookupServer) {
-    if (m_lookupServer->StartListening()) {
-      LOG_GENERAL(INFO, "API Server started to listen again");
-    } else {
-      LOG_GENERAL(WARNING, "API Server couldn't start");
-      return false;
-    }
-  }
-
   if (m_stakingServer) {
     if (m_stakingServer->StartListening()) {
       LOG_GENERAL(INFO, "Staking Server started to listen again");
     } else {
       LOG_GENERAL(WARNING, "Staking Server couldn't start");
+      return false;
+    }
+  }
+  if (m_lookupServer) {
+    if (m_lookupServer->StartListening()) {
+      LOG_GENERAL(INFO, "API Server started to listen again");
+    } else {
+      LOG_GENERAL(WARNING, "API Server couldn't start");
       return false;
     }
   }
@@ -4598,20 +4597,20 @@ bool Lookup::StartJsonRpcPort() {
 bool Lookup::StopJsonRpcPort() {
   LOG_MARKER();
   std::lock_guard<mutex> lock(m_mutexJsonRpc);
-  if (m_lookupServer) {
-    if (!m_lookupServer->StopListening()) {
-      LOG_GENERAL(INFO, "API Server couldn't be stopped");
-      return false;
-    } else {
-      LOG_GENERAL(INFO, "API Server stopped from status api");
-    }
-  }
   if (m_stakingServer) {
     if (!m_stakingServer->StopListening()) {
       LOG_GENERAL(INFO, " Staking Server couldn't be stopped");
       return false;
     } else {
       LOG_GENERAL(INFO, "Staking Server stopped from status api");
+    }
+  }
+  if (m_lookupServer) {
+    if (!m_lookupServer->StopListening()) {
+      LOG_GENERAL(INFO, "API Server couldn't be stopped");
+      return false;
+    } else {
+      LOG_GENERAL(INFO, "API Server stopped from status api");
     }
   }
   return true;
