@@ -29,11 +29,12 @@ struct mhd_coninfo {
     int code;
 };
 
-SafeHttpServer::SafeHttpServer(int port, const std::string &sslcert, const std::string &sslkey, int threads) :
+SafeHttpServer::SafeHttpServer(int port, bool useEpoll, const std::string &sslcert, const std::string &sslkey, int threads) :
     AbstractServerConnector(),
     port(port),
     threads(threads),
     running(false),
+    useEpoll(useEpoll),
     path_sslcert(sslcert),
     path_sslkey(sslkey),
     daemon(NULL),
@@ -58,33 +59,38 @@ bool SafeHttpServer::StartListening() {
 
     unsigned int mhd_flags = 0;
 
+    // Temp fix with useEpoll until proper solution for CLOSE_WAIT
     if (CONNECTION_IO_USE_EPOLL) {
     
       const bool has_epoll =
           (MHD_is_feature_supported(MHD_FEATURE_EPOLL) == MHD_YES);
       const bool has_poll =
           (MHD_is_feature_supported(MHD_FEATURE_POLL) == MHD_YES);
-      mhd_flags = MHD_USE_DUAL_STACK;
+
+
+      mhd_flags |= MHD_USE_DUAL_STACK;
 
       if (has_epoll)
   // In MHD version 0.9.44 the flag is renamed to
   // MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY. In later versions both
   // are deprecated.
   #if defined(MHD_USE_EPOLL_INTERNALLY)
-        mhd_flags = MHD_USE_EPOLL_INTERNALLY;
+        mhd_flags |= MHD_USE_EPOLL_INTERNALLY;
   #else
-        mhd_flags = MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY;
+        mhd_flags |= MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY | MHD_USE_ITC;
   #endif
       else if (has_poll)
-        mhd_flags = MHD_USE_POLL_INTERNALLY;
+        mhd_flags |= MHD_USE_POLL_INTERNALLY;
         
     } else {
-      mhd_flags = MHD_USE_SELECT_INTERNALLY;
+      mhd_flags |= MHD_USE_SELECT_INTERNALLY;
     }
 
 
+    mhd_flags |= MHD_USE_DEBUG;
+
     if (this->bindlocalhost) {
-      LOG_GENERAL(INFO, "Start Listening at bind localhost");
+      LOG_GENERAL(INFO, "Start Listening at bind localhost, mhdflag: " << mhd_flags);
       memset(&this->loopback_addr, 0, sizeof(this->loopback_addr));
       loopback_addr.sin_family = AF_INET;
       loopback_addr.sin_port = htons(this->port);
@@ -93,11 +99,12 @@ bool SafeHttpServer::StartListening() {
       this->daemon = MHD_start_daemon(
           mhd_flags, this->port, NULL, NULL, SafeHttpServer::callback, this,
           MHD_OPTION_THREAD_POOL_SIZE, this->threads, MHD_OPTION_SOCK_ADDR,
+          MHD_OPTION_CONNECTION_TIMEOUT, (unsigned int) 60,
           (struct sockaddr *)(&(this->loopback_addr)), MHD_OPTION_END);
 
     } else if (!this->path_sslcert.empty() && !this->path_sslkey.empty()) {
       try {
-        LOG_GENERAL(INFO, "Start Listening with ssl cert and key");
+        LOG_GENERAL(INFO, "Start Listening with ssl cert and key, mhdflag: " << mhd_flags);
         SpecificationParser::GetFileContent(this->path_sslcert, this->sslcert);
         SpecificationParser::GetFileContent(this->path_sslkey, this->sslkey);
 
@@ -106,15 +113,18 @@ bool SafeHttpServer::StartListening() {
             SafeHttpServer::callback, this, MHD_OPTION_HTTPS_MEM_KEY,
             this->sslkey.c_str(), MHD_OPTION_HTTPS_MEM_CERT,
             this->sslcert.c_str(), MHD_OPTION_THREAD_POOL_SIZE, this->threads,
+            MHD_OPTION_CONNECTION_TIMEOUT, (unsigned int) 60,
             MHD_OPTION_END);
       } catch (JsonRpcException &ex) {
         return false;
       }
     } else {
-      LOG_GENERAL(INFO, "Start Listening");
+      LOG_GENERAL(INFO, "Start Listening, mhdflag: " << mhd_flags);
       this->daemon = MHD_start_daemon(
           mhd_flags, this->port, NULL, NULL, SafeHttpServer::callback, this,
-          MHD_OPTION_THREAD_POOL_SIZE, this->threads, MHD_OPTION_END);
+          MHD_OPTION_THREAD_POOL_SIZE, this->threads, 
+          MHD_OPTION_CONNECTION_TIMEOUT, (unsigned int) 60,
+          MHD_OPTION_END);
     }
     if (this->daemon != NULL)
       this->running = true;
@@ -144,6 +154,10 @@ bool SafeHttpServer::SendResponse(const string &response, void *addInfo) {
   int ret = MHD_queue_response(client_connection->connection,
                                client_connection->code, result);
   MHD_destroy_response(result);
+
+
+  LOG_GENERAL(INFO, "RET: " << ret);
+
   return ret == MHD_YES;
 }
 
@@ -162,6 +176,10 @@ bool SafeHttpServer::SendOptionsResponse(void *addInfo) {
   int ret = MHD_queue_response(client_connection->connection,
                                client_connection->code, result);
   MHD_destroy_response(result);
+
+
+  LOG_GENERAL(INFO, "RET: " << ret);
+
   return ret == MHD_YES;
 }
 
@@ -175,6 +193,7 @@ int SafeHttpServer::callback(void *cls, MHD_Connection *connection, const char *
                          const char *method, const char *version,
                          const char *upload_data, size_t *upload_data_size,
                          void **con_cls) {
+  LOG_MARKER();
 
   (void)version;
   if (*con_cls == NULL) {
@@ -187,29 +206,41 @@ int SafeHttpServer::callback(void *cls, MHD_Connection *connection, const char *
   struct mhd_coninfo *client_connection =
       static_cast<struct mhd_coninfo *>(*con_cls);
     
+
+
+  LOG_GENERAL(INFO, "Url: " <<  url);
+  LOG_GENERAL(INFO, "Method: " << method);
+
   if (string("POST") == method) {
     if (*upload_data_size != 0) {
+      LOG_GENERAL(INFO, "upload_data_size empty");
       client_connection->request.write(upload_data, *upload_data_size);
       *upload_data_size = 0;
       return MHD_YES;
     } else {
+      LOG_GENERAL(INFO, "upload_data_size empty");
+
       string response;
       IClientConnectionHandler *handler =
           client_connection->server->GetHandler(string(url));
       if (handler == NULL) {
+        LOG_GENERAL(INFO, "No client connection handler found");
         client_connection->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
         client_connection->server->SendResponse(
             "No client connection handler found", client_connection);
       } else {
+        LOG_GENERAL(INFO, "MHD_HTTP_OK");
         client_connection->code = MHD_HTTP_OK;
         handler->HandleRequest(client_connection->request.str(), response);
         client_connection->server->SendResponse(response, client_connection);
       }
     }
   } else if (string("OPTIONS") == method) {
+    LOG_GENERAL(INFO, "OPTIONS");
     client_connection->code = MHD_HTTP_OK;
     client_connection->server->SendOptionsResponse(client_connection);
   } else {
+    LOG_GENERAL(INFO, "OTHERS");
     client_connection->code = MHD_HTTP_METHOD_NOT_ALLOWED;
     client_connection->server->SendResponse("Not allowed HTTP Method",
                                             client_connection);
