@@ -73,19 +73,18 @@ bool SafeHttpServer::StartListening() {
   #if defined(MHD_USE_EPOLL_INTERNALLY)
         mhd_flags = MHD_USE_EPOLL_INTERNALLY;
   #else
-        mhd_flags = MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY;
+        mhd_flags |= MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY;
         LOG_GENERAL(INFO, "MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY");
   #endif
       }
       else if (has_poll){
-        mhd_flags = MHD_USE_POLL_INTERNALLY;
+        mhd_flags |= MHD_USE_POLL_INTERNALLY;
         LOG_GENERAL(INFO, "MHD_USE_EPOLL_INTERNALLY_LINUX");
       }
       mhd_flags = mhd_flags | MHD_USE_PIPE_FOR_SHUTDOWN;
     } else {
       mhd_flags = MHD_USE_SELECT_INTERNALLY;
     }
-
 
     if (this->bindlocalhost) {
       LOG_GENERAL(INFO, "Start Listening at bind localhost");

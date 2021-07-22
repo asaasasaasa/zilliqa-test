@@ -462,7 +462,7 @@ Zilliqa::Zilliqa(const PairOfKey& key, const Peer& peer, SyncType syncType,
     }
 
     if (ENABLE_STAKING_RPC) {
-      m_stakingServerConnector = make_unique<SafeHttpServer>(STAKING_RPC_PORT);
+      m_stakingServerConnector = make_unique<SafeHttpServer>(STAKING_RPC_PORT,"","", 400);
       m_stakingServer =
           make_shared<StakingServer>(m_mediator, *m_stakingServerConnector);
 
