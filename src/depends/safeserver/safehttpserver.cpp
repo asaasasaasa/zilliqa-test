@@ -53,7 +53,7 @@ IClientConnectionHandler *SafeHttpServer::GetHandler(const std::string &url) {
 
 bool SafeHttpServer::StartListening() {
   LOG_MARKER();
-
+  LOG_GENERAL(INFO, "Server listening= " << this->running);
   if (!this->running) {
 
     unsigned int mhd_flags = 0;
@@ -66,7 +66,7 @@ bool SafeHttpServer::StartListening() {
           (MHD_is_feature_supported(MHD_FEATURE_POLL) == MHD_YES);
       mhd_flags = MHD_USE_DUAL_STACK;
 
-      if (has_epoll)
+      if (has_epoll){
   // In MHD version 0.9.44 the flag is renamed to
   // MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY. In later versions both
   // are deprecated.
@@ -74,10 +74,14 @@ bool SafeHttpServer::StartListening() {
         mhd_flags = MHD_USE_EPOLL_INTERNALLY;
   #else
         mhd_flags = MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY;
+        LOG_GENERAL(INFO, "MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY");
   #endif
-      else if (has_poll)
+      }
+      else if (has_poll){
         mhd_flags = MHD_USE_POLL_INTERNALLY;
-        
+        LOG_GENERAL(INFO, "MHD_USE_EPOLL_INTERNALLY_LINUX");
+      }
+      mhd_flags = mhd_flags | MHD_USE_PIPE_FOR_SHUTDOWN;
     } else {
       mhd_flags = MHD_USE_SELECT_INTERNALLY;
     }
@@ -112,13 +116,16 @@ bool SafeHttpServer::StartListening() {
       }
     } else {
       LOG_GENERAL(INFO, "Start Listening");
+      LOG_GENERAL(INFO, "before listening this->daemon" << this->daemon);
       this->daemon = MHD_start_daemon(
           mhd_flags, this->port, NULL, NULL, SafeHttpServer::callback, this,
           MHD_OPTION_THREAD_POOL_SIZE, this->threads, MHD_OPTION_END);
+      LOG_GENERAL(INFO, "after listening , this->daemon" << this->daemon);
     }
     if (this->daemon != NULL)
       this->running = true;
   }
+  LOG_GENERAL(INFO, "Server listening at end= " << this->running);
   return this->running;
 }
 
@@ -126,6 +133,9 @@ bool SafeHttpServer::StopListening() {
   LOG_MARKER();
   if (this->running) {
     LOG_GENERAL(INFO, "Stopping");
+    //#if MHD_VERSION <= 0x00094300
+    close (MHD_quiesce_daemon(this->daemon)); // closing was now your responsibility!
+//#endif
     MHD_stop_daemon(this->daemon);
     this->running = false;
   }
