@@ -716,6 +716,10 @@ bool Node::ProcessFinalBlockCore(uint64_t& dsBlockNumber,
                                  TxBlock& txBlock, bytes& stateDelta,
                                  const uint64_t& messageSize) {
   LOG_MARKER();
+  int64_t startMem = 0;
+  if (ENABLE_MEMORY_STATS) {
+    startMem = DisplayPhysicalMemoryStats("Before ProcessFinalBlockCore", 0);
+  }
 
   lock_guard<mutex> g(m_mutexFinalBlock);
   if (txBlock.GetHeader().GetVersion() != TXBLOCK_VERSION) {
@@ -1133,6 +1137,9 @@ bool Node::ProcessFinalBlockCore(uint64_t& dsBlockNumber,
 
     m_mediator.m_lookup->CheckAndFetchUnavailableMBs(
         true);  // except last block
+  }
+  if (ENABLE_MEMORY_STATS) {
+    startMem = DisplayPhysicalMemoryStats("After FetchStateJson", startMem);
   }
   return true;
 }
