@@ -50,12 +50,12 @@
 #include "libUtils/DetachedFunction.h"
 #include "libUtils/HashUtils.h"
 #include "libUtils/Logger.h"
+#include "libUtils/MemoryStats.h"
 #include "libUtils/RootComputation.h"
 #include "libUtils/SanityChecks.h"
 #include "libUtils/TimeLockedFunction.h"
 #include "libUtils/TimeUtils.h"
 #include "libUtils/TimestampVerifier.h"
-#include "libUtils/MemoryStats.h"
 
 using namespace std;
 using namespace boost::multiprecision;
@@ -615,7 +615,7 @@ bool Node::ProcessVCFinalBlockCore(
     return true;
   }
 
-  DisplayPhysicalMemoryStats("Bef ProcessVCFinalBlockCore", startMem);
+  DisplayPhysicalMemoryStats("Aft ProcessVCFinalBlockCore", startMem);
   return false;
 }
 
