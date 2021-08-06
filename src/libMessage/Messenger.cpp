@@ -22,6 +22,7 @@
 #include "libDirectoryService/DirectoryService.h"
 #include "libMessage/ZilliqaMessage.pb.h"
 #include "libUtils/Logger.h"
+#include "libUtils/MemoryStats.h"
 
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
@@ -2688,6 +2689,8 @@ bool Messenger::GetAccountStoreDelta(const bytes& src,
     if (oriAccount == nullptr) {
       Account acc(0, 0);
       accountStore.AddAccount(address, acc);
+      uint64_t startMem =
+          DisplayPhysicalMemoryStats("Before Entry " + address.hex(), 0);
       oriAccount = accountStore.GetAccount(address);
       fullCopy = true;
 
@@ -2709,6 +2712,7 @@ bool Messenger::GetAccountStoreDelta(const bytes& src,
 
     accountStore.AddAccountDuringDeserialization(address, account, t_account,
                                                  fullCopy, revertible);
+    startMem = DisplayPhysicalMemoryStats("End entry ", startMem);
   }
 
   return true;

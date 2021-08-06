@@ -193,6 +193,7 @@ void AccountStore::GetSerializedDelta(bytes& dst) {
 bool AccountStore::DeserializeDelta(const bytes& src, unsigned int offset,
                                     bool revertible) {
   LOG_MARKER();
+  uint64_t startMem = DisplayPhysicalMemoryStats("Before DeserializeDelta", 0);
 
   if (revertible) {
     unique_lock<shared_timed_mutex> g(m_mutexPrimary, defer_lock);
@@ -213,6 +214,7 @@ bool AccountStore::DeserializeDelta(const bytes& src, unsigned int offset,
       return false;
     }
   }
+  startMem = DisplayPhysicalMemoryStats("Before DeserializeDelta", startMem);
 
   return true;
 }
@@ -741,7 +743,9 @@ bool AccountStore::MigrateContractStates(
 
     account.SetStorageRoot(dev::h256());
 
+    uint64_t startMem = DisplayPhysicalMemoryStats("Before UpdateStates", 0);
     account.UpdateStates(address, t_metadata, toDeletes, false);
+    startMem = DisplayPhysicalMemoryStats("After UpdateStates", startMem);
 
     // Run the disambiguator.
 
