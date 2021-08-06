@@ -595,6 +595,8 @@ bool Node::ProcessVCFinalBlockCore(
   TxBlock txBlock;
   bytes stateDelta;
   std::vector<VCBlock> vcBlocks;
+  uint64_t startMem =
+      DisplayPhysicalMemoryStats("Bef ProcessVCFinalBlockCore", 0);
 
   if (!Messenger::GetNodeVCFinalBlock(message, offset, dsBlockNumber,
                                       consensusID, txBlock, stateDelta,
@@ -625,6 +627,7 @@ bool Node::ProcessVCFinalBlockCore(
     return true;
   }
 
+  DisplayPhysicalMemoryStats("Bef ProcessVCFinalBlockCore", startMem);
   return false;
 }
 
@@ -716,6 +719,8 @@ bool Node::ProcessFinalBlockCore(uint64_t& dsBlockNumber,
                                  TxBlock& txBlock, bytes& stateDelta,
                                  const uint64_t& messageSize) {
   LOG_MARKER();
+  uint64_t startMem = 0;
+  startMem = DisplayPhysicalMemoryStats("Bef ProcessFinalBlockCore", 0);
 
   lock_guard<mutex> g(m_mutexFinalBlock);
   if (txBlock.GetHeader().GetVersion() != TXBLOCK_VERSION) {
@@ -933,10 +938,14 @@ bool Node::ProcessFinalBlockCore(uint64_t& dsBlockNumber,
   bool isVacuousEpoch = m_mediator.GetIsVacuousEpoch();
   m_isVacuousEpochBuffer = isVacuousEpoch;
 
+  startMem = DisplayPhysicalMemoryStats("Bef ProcessStateDeltaFromFinalBlock",
+                                        startMem);
   if (!ProcessStateDeltaFromFinalBlock(
           stateDelta, txBlock.GetHeader().GetStateDeltaHash())) {
     return false;
   }
+  startMem = DisplayPhysicalMemoryStats("Aft ProcessStateDeltaFromFinalBlock",
+                                        startMem);
 
   if (isVacuousEpoch) {
     unordered_map<Address, int256_t> addressMap;
@@ -1009,6 +1018,7 @@ bool Node::ProcessFinalBlockCore(uint64_t& dsBlockNumber,
     }
   } else {
     LOG_GENERAL(INFO, "isVacuousEpoch now");
+    startMem = DisplayPhysicalMemoryStats("VacuousEpoch now", startMem);
 
     // Check whether any ds guard change network info
     if (!LOOKUP_NODE_MODE) {
@@ -1077,6 +1087,8 @@ bool Node::ProcessFinalBlockCore(uint64_t& dsBlockNumber,
                 PREGEN_ACCOUNT_TIMES) {
           PopulateAccounts();
         }
+        DetachedFunction(1, CommonUtils::ReleaseSTLMemoryCache);
+        DisplayPhysicalMemoryStats("After MUD", 0);
       }
     };
     DetachedFunction(1, writeStateToDisk);
@@ -1134,6 +1146,7 @@ bool Node::ProcessFinalBlockCore(uint64_t& dsBlockNumber,
     m_mediator.m_lookup->CheckAndFetchUnavailableMBs(
         true);  // except last block
   }
+  startMem = DisplayPhysicalMemoryStats("Aft ProcessFinalBlockCore", startMem);
   return true;
 }
 
@@ -1618,6 +1631,8 @@ bool Node::ProcessPendingTxn(const bytes& message, unsigned int cur_offset,
 }
 
 bool Node::ProcessMBnForwardTransactionCore(const MBnForwardedTxnEntry& entry) {
+  uint64_t startMem =
+      DisplayPhysicalMemoryStats("Bef ProcessMBnForwardTransactionCore", 0);
   if (!LOOKUP_NODE_MODE) {
     LOG_GENERAL(WARNING,
                 "Node::ProcessMBnForwardTransactionCore not expected to be "
@@ -1641,7 +1656,11 @@ bool Node::ProcessMBnForwardTransactionCore(const MBnForwardedTxnEntry& entry) {
 
     m_mediator.m_lookup->AddMicroBlockToStorage(entry.m_microBlock);
 
+    uint64_t startMem =
+        DisplayPhysicalMemoryStats("Bef CommitForwardedTransactions", 0);
     CommitForwardedTransactions(entry);
+    startMem =
+        DisplayPhysicalMemoryStats("Aft CommitForwardedTransactions", startMem);
 
     // Microblock and Transaction body sharing
     bytes mb_txns_message = {MessageType::NODE,
@@ -1719,6 +1738,8 @@ bool Node::ProcessMBnForwardTransactionCore(const MBnForwardedTxnEntry& entry) {
       }
     }
   }
+  startMem = DisplayPhysicalMemoryStats("Aft ProcessMBnForwardTransactionCore",
+                                        startMem);
 
   return true;
 }
