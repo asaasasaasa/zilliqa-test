@@ -27,6 +27,7 @@
 #include "libPersistence/ScillaMessage.pb.h"
 #pragma GCC diagnostic pop
 #include "libServer/ScillaIPCServer.h"
+#include "libUtils/MemoryStats.h"
 #include "libUtils/SysCommand.h"
 
 using namespace std;
@@ -232,6 +233,7 @@ bool AccountStore::MoveRootToDisk(const h256& root) {
 
 bool AccountStore::MoveUpdatesToDisk() {
   LOG_MARKER();
+  uint64_t startMem = DisplayPhysicalMemoryStats("Bef MoveUpdatesToDisk", 0);
 
   unique_lock<shared_timed_mutex> g(m_mutexPrimary, defer_lock);
   unique_lock<mutex> g2(m_mutexDB, defer_lock);
@@ -305,7 +307,7 @@ bool AccountStore::MoveUpdatesToDisk() {
   }
 
   m_addressToAccount->clear();
-
+  startMem = DisplayPhysicalMemoryStats("Aft MoveUpdatesToDisk", startMem);
   return true;
 }
 
