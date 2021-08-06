@@ -627,7 +627,7 @@ bool Node::ProcessVCFinalBlockCore(
     return true;
   }
 
-  DisplayPhysicalMemoryStats("Bef ProcessVCFinalBlockCore", startMem);
+  DisplayPhysicalMemoryStats("Aft ProcessVCFinalBlockCore", startMem);
   return false;
 }
 
