@@ -199,7 +199,7 @@ bool AccountStore::DeserializeDelta(const bytes& src, unsigned int offset,
                                     bool revertible) {
   LOG_MARKER();
 
-  uint64_t startMem = DisplayPhysicalMemoryStats("Before DeserializeDelta", 0);
+  uint64_t startMem = DisplayPhysicalMemoryStats("Bef DeserializeDelta", 0);
 
   if (LOOKUP_NODE_MODE) {
     std::lock_guard<std::mutex> g(m_mutexTrie);
@@ -235,7 +235,7 @@ bool AccountStore::DeserializeDelta(const bytes& src, unsigned int offset,
 
   m_prevRoot = GetStateRootHash();
 
-  startMem = DisplayPhysicalMemoryStats("Before DeserializeDelta", startMem);
+  startMem = DisplayPhysicalMemoryStats("Aft DeserializeDelta", startMem);
 
   return true;
 }

@@ -758,14 +758,14 @@ bool ProtobufToAccountDelta(const ProtoAccount& protoAccount, Account& account,
       }
 
       uint64_t startMem =
-          DisplayPhysicalMemoryStats("Before UpdateStates" + addr.hex(), 0);
+          DisplayPhysicalMemoryStats("Bef UpdateStates " + addr.hex(), 0);
 
       if (!account.UpdateStates(addr, t_states, toDeleteIndices, temp,
                                 revertible)) {
         LOG_GENERAL(WARNING, "Account::UpdateStates failed");
         return false;
       }
-      startMem = DisplayPhysicalMemoryStats("After UpdateStates", startMem);
+      startMem = DisplayPhysicalMemoryStats("Aft UpdateStates", startMem);
     }
   }
 
@@ -2720,7 +2720,7 @@ bool Messenger::GetAccountStoreDelta(const bytes& src,
          address.asArray().begin());
 
     uint64_t startMem =
-        DisplayPhysicalMemoryStats("Before Entry " + address.hex(), 0);
+        DisplayPhysicalMemoryStats("Bef Entry " + address.hex(), 0);
 
     const Account* oriAccount = accountStore.GetAccount(address);
     bool fullCopy = false;
@@ -2749,7 +2749,7 @@ bool Messenger::GetAccountStoreDelta(const bytes& src,
     accountStore.AddAccountDuringDeserialization(address, account, t_account,
                                                  fullCopy, revertible);
 
-    startMem = DisplayPhysicalMemoryStats("End entry ", startMem);
+    startMem = DisplayPhysicalMemoryStats("Aft entry ", startMem);
   }
 
   return true;
