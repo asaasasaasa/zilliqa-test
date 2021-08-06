@@ -568,7 +568,9 @@ bool ProtobufToAccount(const ProtoAccount& protoAccount, Account& account,
       toDeleteIndices.emplace_back(entry);
     }
 
+    uint64_t startMem = DisplayPhysicalMemoryStats("Bef UpdateStates", 0);
     account.UpdateStates(addr, t_states, toDeleteIndices, false);
+    startMem = DisplayPhysicalMemoryStats("Aft UpdateStates", startMem);
 
     if (account.GetStorageRoot() != tmpStorageRoot) {
       LOG_GENERAL(WARNING, "Storage root mismatch. Expected: "
@@ -732,7 +734,9 @@ bool ProtobufToAccountDelta(const ProtoAccount& protoAccount, Account& account,
         toDeleteIndices.emplace_back(entry);
       }
 
+      uint64_t startMem = DisplayPhysicalMemoryStats("Bef UpdateStates", 0);
       account.UpdateStates(addr, t_states, toDeleteIndices, temp, revertible);
+      startMem = DisplayPhysicalMemoryStats("Aft UpdateStates", startMem);
 
       if ((!t_states.empty() || !toDeleteIndices.empty()) &&
           accbase.GetStorageRoot() != account.GetStorageRoot()) {
@@ -2690,7 +2694,7 @@ bool Messenger::GetAccountStoreDelta(const bytes& src,
     if (oriAccount == nullptr) {
       Account acc(0, 0);
       accountStore.AddAccount(address, acc);
-      startMem = DisplayPhysicalMemoryStats("Before Entry " + address.hex(), 0);
+      startMem = DisplayPhysicalMemoryStats("Bef Entry " + address.hex(), 0);
       oriAccount = accountStore.GetAccount(address);
       fullCopy = true;
 
@@ -2712,7 +2716,7 @@ bool Messenger::GetAccountStoreDelta(const bytes& src,
 
     accountStore.AddAccountDuringDeserialization(address, account, t_account,
                                                  fullCopy, revertible);
-    DisplayPhysicalMemoryStats("End entry ", startMem);
+    DisplayPhysicalMemoryStats("Aft entry ", startMem);
   }
 
   return true;

@@ -25,6 +25,7 @@
 #include "libServer/ScillaIPCServer.h"
 #include "libUtils/DataConversion.h"
 #include "libUtils/JsonUtils.h"
+#include "libUtils/MemoryStats.h"
 #include "libUtils/SafeMath.h"
 #include "libUtils/ScillaUtils.h"
 #include "libUtils/SysCommand.h"
@@ -446,7 +447,9 @@ bool AccountStoreSC<MAP>::UpdateAccounts(const uint64_t& blockNum,
                              toAddr, CONTRACT_ADDR_INDICATOR, {}),
                          toAddr.asBytes());
 
+      uint64_t startMem = DisplayPhysicalMemoryStats("Bef UpdateStates", 0);
       toAccount->UpdateStates(toAddr, t_metadata, {}, true);
+      startMem = DisplayPhysicalMemoryStats("Aft UpdateStates", startMem);
 
       /// calculate total gas in receipt
       receipt.SetCumGas(transaction.GetGasLimit() - gasRemained);
