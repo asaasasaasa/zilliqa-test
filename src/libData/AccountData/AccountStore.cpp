@@ -237,7 +237,6 @@ bool AccountStore::DeserializeDelta(const bytes& src, unsigned int offset,
 
   startMem = DisplayPhysicalMemoryStats("Before DeserializeDelta", startMem);
 
-
   return true;
 }
 
