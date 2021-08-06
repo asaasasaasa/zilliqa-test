@@ -55,6 +55,7 @@
 #include "libUtils/TimeLockedFunction.h"
 #include "libUtils/TimeUtils.h"
 #include "libUtils/TimestampVerifier.h"
+#include "libUtils/MemoryStats.h"
 
 using namespace std;
 using namespace boost::multiprecision;
