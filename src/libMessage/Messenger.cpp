@@ -2686,11 +2686,11 @@ bool Messenger::GetAccountStoreDelta(const bytes& src,
 
     const Account* oriAccount = accountStore.GetAccount(address);
     bool fullCopy = false;
+    uint64_t startMem = 0;
     if (oriAccount == nullptr) {
       Account acc(0, 0);
       accountStore.AddAccount(address, acc);
-      uint64_t startMem =
-          DisplayPhysicalMemoryStats("Before Entry " + address.hex(), 0);
+      startMem = DisplayPhysicalMemoryStats("Before Entry " + address.hex(), 0);
       oriAccount = accountStore.GetAccount(address);
       fullCopy = true;
 
@@ -2712,7 +2712,7 @@ bool Messenger::GetAccountStoreDelta(const bytes& src,
 
     accountStore.AddAccountDuringDeserialization(address, account, t_account,
                                                  fullCopy, revertible);
-    startMem = DisplayPhysicalMemoryStats("End entry ", startMem);
+    DisplayPhysicalMemoryStats("End entry ", startMem);
   }
 
   return true;
