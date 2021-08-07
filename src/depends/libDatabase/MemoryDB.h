@@ -22,6 +22,7 @@
 
 #include <shared_mutex>
 #include <unordered_map>
+#include <memory>
 
 #include "depends/common/Common.h"
 #include "depends/common/RLP.h"
@@ -39,7 +40,7 @@ namespace dev
 
         MemoryDB& operator=(MemoryDB const& _c);
 
-        void clear() { m_main.clear(); m_aux.clear(); }	// WARNING !!!! didn't originally clear m_refCount!!!
+        void clear() { m_main->clear(); m_aux.clear(); }	// WARNING !!!! didn't originally clear m_refCount!!!
         std::unordered_map<h256, std::string> get() const;
 
         std::string lookup(h256 const& _h) const;
@@ -57,7 +58,7 @@ namespace dev
 // #if DEV_GUARDED_DB
         mutable std::shared_timed_mutex x_this;
 // #endif
-        std::unordered_map<h256, std::pair<std::string, unsigned>> m_main;
+        std::shared_ptr<std::unordered_map<h256, std::pair<std::string, unsigned>>> m_main;
         std::unordered_map<h256, std::pair<bytes, bool>> m_aux;
 
         mutable bool m_enforceRefs = false;
