@@ -30,6 +30,8 @@ bool TraceableDB::commit(const uint64_t& dsBlockNum) {
   }
 
   if (!(KEEP_HISTORICAL_STATE && LOOKUP_NODE_MODE) || !dsBlockNum) {
+    // memory mgmt
+    dev::h256s().swap(toPurge);
     return true;
   }
 
@@ -69,7 +71,15 @@ bool TraceableDB::AddPendingPurge(const uint64_t& dsBlockNum,
   keystream.width(BLOCK_NUMERIC_DIGITS);
   keystream << std::to_string(dsBlockNum);
 
-  return m_purgeDB.Insert(keystream.str(), s.out()) == 0;
+  bool res = m_purgeDB.Insert(keystream.str(), s.out());
+
+  // memory mgmt
+  s.clear();
+
+  if (res == 0) {
+    return true;
+  }
+  return false;
 }
 
 bool TraceableDB::ExecutePurge(const uint64_t& dsBlockNum,
@@ -121,7 +131,12 @@ bool TraceableDB::ExecutePurge(const uint64_t& dsBlockNum,
       }
       // Replace the blocknum with new purge hashes
       m_purgeDB.Insert(iter->key().ToString(), s.out());
+
+      // memory mgmt
+      s.clear();
     }
+    // memory mgmt
+    dev::h256s().swap(toPurge);
   }
 
   return true;
