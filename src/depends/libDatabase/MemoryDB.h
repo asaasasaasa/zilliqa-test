@@ -34,13 +34,21 @@ namespace dev
         friend class EnforceRefs;
 
     public:
-        MemoryDB() {}
+        MemoryDB() {
+            m_main.reset(new std::unordered_map<h256, std::pair<std::string, unsigned>>());
+        }
         MemoryDB(MemoryDB const& _c) { operator=(_c); }
-        explicit MemoryDB(const std::string & _s, bool keepHistory = false) {}
+        explicit MemoryDB(const std::string & _s, bool keepHistory = false) {
+            m_main.reset(new std::unordered_map<h256, std::pair<std::string, unsigned>>());
+        }
 
         MemoryDB& operator=(MemoryDB const& _c);
 
-        void clear() { m_main->clear(); m_aux.clear(); }	// WARNING !!!! didn't originally clear m_refCount!!!
+        void clear() { 
+            m_main->clear();
+            m_main.reset(new std::unordered_map<h256, std::pair<std::string, unsigned>>()); 
+            m_aux.clear();
+        }	// WARNING !!!! didn't originally clear m_refCount!!!
         std::unordered_map<h256, std::string> get() const;
 
         std::string lookup(h256 const& _h) const;
