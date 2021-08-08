@@ -47,6 +47,9 @@ bool TraceableDB::commit(const uint64_t& dsBlockNum) {
     return false;
   }
 
+  // memory mgmt
+  dev::h256s().swap(toPurge);
+
   return true;
 }
 
