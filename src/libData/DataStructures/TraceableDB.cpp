@@ -109,7 +109,7 @@ bool TraceableDB::ExecutePurge(const uint64_t& dsBlockNum,
     // If purgeAll = true, dsBlockNum is inconsequential
     dev::RLP rlp(iter->value());
     std::vector<dev::h256> toPurge(rlp);
-
+    bool updated = false;
     for (auto it = toPurge.begin(); it != toPurge.end();) {
       if (LOG_SC) {
         LOG_GENERAL(INFO, "purging: " << it->hex()
@@ -118,6 +118,7 @@ bool TraceableDB::ExecutePurge(const uint64_t& dsBlockNum,
       if (inserted.find(*it) != inserted.end()) {
         LOG_GENERAL(INFO, "Do not purge : " << it->hex());
         it = toPurge.erase(it);
+        updated = true;
       } else {
         ++it;
       }
@@ -127,16 +128,18 @@ bool TraceableDB::ExecutePurge(const uint64_t& dsBlockNum,
       m_purgeDB.DeleteKey(iter->key().ToString());
       LOG_GENERAL(INFO, "Purged entries for t_dsBlockNum = " << t_dsBlockNum);
     } else {
-      dev::RLPStream s(toPurge.size());
+      if (updated) {
+        dev::RLPStream s(toPurge.size());
 
-      for (const auto& i : toPurge) {
-        s.append(i);
+        for (const auto& i : toPurge) {
+          s.append(i);
+        }
+        // Replace the blocknum with new purge hashes
+        m_purgeDB.Insert(iter->key().ToString(), s.out());
+
+        // memory mgmt
+        s.clear();
       }
-      // Replace the blocknum with new purge hashes
-      m_purgeDB.Insert(iter->key().ToString(), s.out());
-
-      // memory mgmt
-      s.clear();
     }
     // memory mgmt
     dev::h256s().swap(toPurge);
