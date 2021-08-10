@@ -87,8 +87,8 @@ bool TraceableDB::ExecutePurge(const uint64_t& dsBlockNum,
                                bool purgeAll) {
   LOG_MARKER();
 
-  leveldb::Iterator* iter =
-      m_purgeDB.GetDB()->NewIterator(leveldb::ReadOptions());
+  std::unique_ptr<leveldb::Iterator> iter(
+      m_purgeDB.GetDB()->NewIterator(leveldb::ReadOptions()));
   iter->SeekToFirst();
   for (; iter->Valid(); iter->Next()) {
     if (purgeAll && m_stopSignal) {
