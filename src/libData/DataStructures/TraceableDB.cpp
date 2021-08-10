@@ -129,6 +129,7 @@ bool TraceableDB::ExecutePurge(const uint64_t& dsBlockNum,
       // compact/cleanup for this key immediately.
       leveldb::Slice k(iter->key());
       m_purgeDB.GetDB()->CompactRange(&k, &k);
+      m_purgeDB.RefreshDB();
       LOG_GENERAL(INFO, "Purged entries for t_dsBlockNum = " << t_dsBlockNum);
     } else {
       if (updated) {
