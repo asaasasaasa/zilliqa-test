@@ -3274,16 +3274,6 @@ bool Lookup::ProcessSetTxBlockFromSeed(
         }
         break;
       }
-      case Validator::TxBlockValidationMsg::INVALID:
-        LOG_GENERAL(INFO, "[TxBlockVerif]"
-                              << "Invalid blocks");
-        // temporary
-        if (LOOKUP_NODE_MODE && ARCHIVAL_LOOKUP && !m_rejoinInProgress) {
-          m_rejoinInProgress = true;
-          cv_setRejoinRecovery.notify_all();
-          RejoinNetwork();
-        }
-        break;
       case Validator::TxBlockValidationMsg::STALEDSINFO:
         LOG_GENERAL(INFO, "[TxBlockVerif]"
                               << "Saved to buffer");
@@ -3292,11 +3282,20 @@ bool Lookup::ProcessSetTxBlockFromSeed(
           m_txBlockBuffer.emplace_back(txBlock);
         }
         break;
+      case Validator::TxBlockValidationMsg::INVALID:
+        LOG_GENERAL(INFO, "[TxBlockVerif]"
+                              << "Invalid blocks");
+        break;
+      case Validator::TxBlockValidationMsg::STALE:
+        // Should sync from S3 
+        if (LOOKUP_NODE_MODE && ARCHIVAL_LOOKUP && !m_rejoinInProgress) {
+          m_rejoinInProgress = true;
+          cv_setRejoinRecovery.notify_all();
+          RejoinNetwork();
+        }
       default:;
     }
   }
-
-  LOG_GENERAL(INFO, "Reached here");
   return true;
 }
 
