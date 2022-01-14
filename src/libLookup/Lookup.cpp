@@ -3242,12 +3242,13 @@ bool Lookup::ProcessSetTxBlockFromSeed(
                               << "Invalid blocks");
         break;
       case Validator::TxBlockValidationMsg::STALE:
-        LOG_GENERAL(INFO, "[TxBlockVerif]"
-                              << "Stale blocks, will rejoin network"
-                              << (m_rejoinInProgress ? "Rejoin in progress"
-                                                     : "Rejoining network..."));
+        LOG_GENERAL(INFO,
+                    "[TxBlockVerif]"
+                        << "Stale blocks, will rejoin network, "
+                        << (m_rejoinInProgress ? "Rejoin already in progress"
+                                               : "Starting rejoin network"));
         // Should sync from S3
-        if (LOOKUP_NODE_MODE && ARCHIVAL_LOOKUP && !m_rejoinInProgress) {
+        if (LOOKUP_NODE_MODE && ARCHIVAL_LOOKUP) {
           m_rejoinInProgress = true;
           cv_setRejoinRecovery.notify_all();
           RejoinNetwork();
@@ -4733,7 +4734,7 @@ void Lookup::RejoinAsNewLookup(bool fromLookup) {
                              // confirm if no new ds epoch started
         InitSync();
       } else {
-        // Sync from S3 again
+        // Sync from S3
         LOG_GENERAL(INFO,
                     "I am lagging behind by ds epoch! Will rejoin again!");
         m_mediator.m_lookup->SetSyncType(SyncType::NO_SYNC);
