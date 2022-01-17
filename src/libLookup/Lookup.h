@@ -82,8 +82,6 @@ class Lookup : public Executable {
   mutable std::shared_timed_mutex m_mutexL2lDataProviders;
   VectorOfNode m_l2lDataProviders;
 
-  bool m_isFirstTimeSetNodes = true;
-
   bool m_dsInfoWaitingNotifying = false;
   bool m_fetchedDSInfo = false;
 
@@ -117,14 +115,14 @@ class Lookup : public Executable {
   /// To indicate which type of synchronization is using
   std::atomic<SyncType> m_syncType{};  // = SyncType::NO_SYNC;
 
-  bool GetNodesFromDnsCache(VectorOfNode& resultNodes, DnsListType listType,
-                            unsigned int nodePort);
+  bool GetNodesFromDnsCache(VectorOfNode& currentLocalNodes,
+                            DnsListType listType, unsigned int nodePort);
 
-  void ObtainNodesFromConfig(VectorOfNode& resultNodes,
+  void ObtainNodesFromConfig(VectorOfNode& currentLocalNodes,
                              const std::string& xmlNodeType,
                              unsigned int nodePort);
 
-  void UpdateNodes(VectorOfNode& resultNodes, unsigned int nodePort,
+  void UpdateNodes(VectorOfNode& currentLocalNodes, unsigned int nodePort,
                    DnsListType listType, const std::string& fallbackXmlType);
 
   void SetGenesisWallets();

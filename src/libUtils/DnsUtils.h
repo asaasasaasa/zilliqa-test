@@ -38,8 +38,6 @@ void AttemptPopulateLookupsDnsCacheImmediately(DnsListType listType);
 
 std::string GetPubKeyUrl(const std::string& ip, const std::string& url);
 
-uint128_t ConvertIpStringToUint128(const std::string& ipStr);
-
 bool GetIpStrListFromDnsCache(std::vector<std::string>& ipStrList,
                               DnsListType listType);
 

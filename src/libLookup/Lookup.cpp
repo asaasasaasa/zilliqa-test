@@ -78,7 +78,6 @@ Lookup::Lookup(Mediator& mediator, SyncType syncType, bool multiplierSyncMode,
   InitDnsCacheList();
 
   UpdateAllSeedsAndMultipliers();
-  m_isFirstTimeSetNodes = false;
 
   SetGenesisWallets();
 
@@ -192,7 +191,7 @@ bool Lookup::IsL2lDataProvidersEmpty() {
   return m_l2lDataProviders.empty();
 }
 
-bool Lookup::GetNodesFromDnsCache(VectorOfNode& resultNodes,
+bool Lookup::GetNodesFromDnsCache(VectorOfNode& currentLocalNodes,
                                   DnsListType listType, unsigned int port) {
   vector<string> ipList;
   if (!GetIpStrListFromDnsCache(ipList, listType)) {
@@ -206,24 +205,30 @@ bool Lookup::GetNodesFromDnsCache(VectorOfNode& resultNodes,
       LOG_GENERAL(WARNING, "Unable to obtain Pubkey for IP: " << ipStr);
       continue;  // Unable to query
     }
-    Peer node{ConvertIpStringToUint128(ipStr), port};
+
+    uint128_t ipInt;
+    if (!IPConverter::ToNumericalIPFromStr(ipStr, ipInt)) {
+      LOG_GENERAL(WARNING, "Unable to change IP to ipInt, " << ipStr);
+      continue;
+    }
+    Peer node{ipInt, port};
     PubKey pkey{pubkeyBytes, 0};
 
     LOG_GENERAL(INFO, "Adding IP: " << ipStr << ", Pubkey: " << pkey);
-    resultNodes.emplace_back(pkey, node);
+    currentLocalNodes.emplace_back(pkey, node);
   }
 
   return true;
 }
 
-void Lookup::ObtainNodesFromConfig(VectorOfNode& resultNodes,
+void Lookup::ObtainNodesFromConfig(VectorOfNode& currentLocalNodes,
                                    const string& xmlNodeType,
                                    unsigned int port) {
   LOG_MARKER();
   using boost::property_tree::ptree;
   ptree pt;
   read_xml("constants.xml", pt);
-  resultNodes.clear();
+  currentLocalNodes.clear();
   for (const ptree::value_type& v : pt.get_child(xmlNodeType)) {
     if (v.first == "peer") {
       struct in_addr ip_addr {};
@@ -240,12 +245,12 @@ void Lookup::ObtainNodesFromConfig(VectorOfNode& resultNodes,
       if (!url.empty()) {
         node.SetHostname(url);
       }
-      resultNodes.emplace_back(PubKey{pubkeyBytes, 0}, node);
+      currentLocalNodes.emplace_back(PubKey{pubkeyBytes, 0}, node);
     }
   }
 }
 
-void Lookup::UpdateNodes(VectorOfNode& resultNodes, unsigned int nodePort,
+void Lookup::UpdateNodes(VectorOfNode& currentLocalNodes, unsigned int nodePort,
                          DnsListType listType,
                          const std::string& fallbackXmlType) {
   LOG_MARKER();
@@ -254,26 +259,20 @@ void Lookup::UpdateNodes(VectorOfNode& resultNodes, unsigned int nodePort,
 
   if (QUERY_DNS_FOR_SEED && GetNodesFromDnsCache(tmp, listType, nodePort)) {
     // Only copy if something is populated from dns cache
-    resultNodes = tmp;
-    LOG_GENERAL(INFO, "Updated Size: " << resultNodes.size() << " for "
+    currentLocalNodes = tmp;
+    LOG_GENERAL(INFO, "Updated Size: " << currentLocalNodes.size() << " for "
                                        << fallbackXmlType);
     return;  // Success
-  }
-
-  LOG_GENERAL(INFO,
-              "FirstTime: " << m_isFirstTimeSetNodes
-                            << ", old results size: " << resultNodes.size());
-
-  // When dns query is off or failed
-  // If we have local list populated, use them as they are the previous latest
-  // Else, fallback to the config
-  if (m_isFirstTimeSetNodes || resultNodes.empty()) {
+  } else if (currentLocalNodes.empty()) {
+    // When dns query is off or failed
+    // and our current nodes are empty, then use the config
     LOG_GENERAL(WARNING, "Falling back to obtain IP and Pubkey from config");
-    ObtainNodesFromConfig(resultNodes, fallbackXmlType, nodePort);
-  }
+    ObtainNodesFromConfig(currentLocalNodes, fallbackXmlType, nodePort);
+  }  // Else, don't change anything, use whatever we have in the local list.
 
-  LOG_GENERAL(INFO, "Updated size after fallback: "
-                        << resultNodes.size() << " for " << fallbackXmlType);
+  LOG_GENERAL(INFO, "Updated size after fallback: " << currentLocalNodes.size()
+                                                    << " for "
+                                                    << fallbackXmlType);
 }
 
 void Lookup::SetUpperSeedsInner() {

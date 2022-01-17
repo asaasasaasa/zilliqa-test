@@ -21,6 +21,7 @@
 
 #include "common/Constants.h"
 #include "libUtils/DetachedFunction.h"
+#include "libUtils/IPConverter.h"
 
 #include <arpa/inet.h>
 #include <arpa/nameser.h>
@@ -44,14 +45,12 @@ using DnsIpListData = vector<string>;
 using DnsPubKeyListData = unordered_map<uint128_t, bytes>;
 
 struct DnsCacheList {
-  atomic<bool> isQuerying;
+  mutex dataAccessMutex;
   mutex queryWaitMutex;
   condition_variable queryWaitCv;
 
   DnsIpListData ipList;
   DnsPubKeyListData pubKeyList;
-
-  DnsCacheList() : isQuerying(false) {}
 };
 
 unordered_map<DnsListType, string> dnsAddresses;
@@ -62,7 +61,7 @@ unordered_map<DnsListType, string> dnsAddresses;
 // And the above starts over again
 unordered_map<DnsListType, DnsCacheList> dnsCacheListDataMap;
 
-bool QueryIpStrListFromDns(vector<string> &ipStrList, DnsListType listType) {
+bool QueryIpStrListFromDns(DnsListType listType) {
   LOG_MARKER();
   const auto &url = dnsAddresses[listType];
 
@@ -104,6 +103,7 @@ bool QueryIpStrListFromDns(vector<string> &ipStrList, DnsListType listType) {
 
   res = result;
 
+  auto &ipStrList = dnsCacheListDataMap[listType].ipList;
   ipStrList.clear();
 
   while (res) {
@@ -131,16 +131,8 @@ bool QueryIpStrListFromDns(vector<string> &ipStrList, DnsListType listType) {
 }
 
 // Pub key are stored in the TXT record
-bool QueryPubKeyFromUrl(bytes &output, const string &ip, DnsListType listType) {
+bool QueryPubKeyFromUrl(bytes &output, const string &pubKeyUrl) {
   LOG_MARKER();
-  const auto &url = dnsAddresses[listType];
-
-  if (url.empty() || ip.empty()) {
-    LOG_GENERAL(INFO, "Ip or DNS is empty");
-    return false;
-  }
-
-  auto pubKeyUrl = GetPubKeyUrl(ip, url);
 
   unsigned char query_buffer[256];
   int resLen = 0;
@@ -203,29 +195,39 @@ void QueryDnsList(DnsListType listType) {
 
   auto &dataListCache = dnsCacheListDataMap[listType];
 
-  if (dataListCache.isQuerying) {
+  if (!dataListCache.dataAccessMutex.try_lock()) {
     LOG_GENERAL(INFO, "Another thread is querying " << dnsAddresses[listType]);
     return;
   }
 
-  auto &ipList = dataListCache.ipList;
-
-  if (!QueryIpStrListFromDns(ipList, listType)) {
+  if (!QueryIpStrListFromDns(listType)) {
     LOG_GENERAL(WARNING, "Failed to obtain ip list from "
                              << dnsAddresses[listType]
                              << ", try again on another DS epoch");
+    dataListCache.dataAccessMutex.unlock();
     return;
   }
 
   vector<uint128_t> currentIpKeys;
-  currentIpKeys.reserve(ipList.size());
+  currentIpKeys.reserve(dataListCache.ipList.size());
 
   auto &pubKeyList = dataListCache.pubKeyList;
-  auto dnsAddress = dnsAddresses[listType];
+  auto url = dnsAddresses[listType];
+
+  if (url.empty()) {
+    LOG_GENERAL(WARNING, "url is empty");
+    dataListCache.dataAccessMutex.unlock();
+    return;
+  }
 
   // Adding new pubkeys to our dns cache
-  for (const auto &ipStr : ipList) {
-    auto ipKey = ConvertIpStringToUint128(ipStr);
+  for (const auto &ipStr : dataListCache.ipList) {
+    uint128_t ipKey;
+    if (!IPConverter::ToNumericalIPFromStr(ipStr, ipKey)) {
+      LOG_GENERAL(WARNING, "Unable to change IP to ipKey: " << ipKey);
+      continue;
+    }
+
     currentIpKeys.emplace_back(ipKey);
 
     if (pubKeyList.find(ipKey) != pubKeyList.end()) {
@@ -234,8 +236,14 @@ void QueryDnsList(DnsListType listType) {
       continue;
     }
 
+    if (ipStr.empty()) {
+      LOG_GENERAL(WARNING, "Ip is empty");
+      continue;
+    }
+
+    auto pubKeyUrl = GetPubKeyUrl(ipStr, url);
     bytes pubKeyResult;
-    if (QueryPubKeyFromUrl(pubKeyResult, ipStr, listType)) {
+    if (QueryPubKeyFromUrl(pubKeyResult, pubKeyUrl)) {
       pubKeyList[ipKey] = pubKeyResult;
     }
   }
@@ -250,7 +258,7 @@ void QueryDnsList(DnsListType listType) {
     }
   }
 
-  dataListCache.isQuerying = false;
+  dataListCache.dataAccessMutex.unlock();
   dataListCache.queryWaitCv.notify_all();
 }
 }  // namespace
@@ -279,13 +287,10 @@ void AttemptPopulateLookupsDnsCache() {
 void AttemptPopulateLookupsDnsCacheImmediately(DnsListType listType) {
   LOG_MARKER();
 
-  auto &dataListCache = dnsCacheListDataMap[listType];
-  if (!dataListCache.isQuerying) {
-    DetachedFunction(1, QueryDnsList, listType);
-    // else, wait for another thread to finish
-  }
+  DetachedFunction(1, QueryDnsList, listType);
 
   // Timeout for result to go into cache
+  auto &dataListCache = dnsCacheListDataMap[listType];
   unique_lock<mutex> lock(dataListCache.queryWaitMutex);
   if (dataListCache.queryWaitCv.wait_for(
           lock, std::chrono::milliseconds(QUERY_DNS_TIMEOUT_MILLISECONDS)) ==
@@ -300,49 +305,53 @@ string GetPubKeyUrl(const std::string &ip, const std::string &url) {
   return "pub-" + tmpIp + url.substr(url.find_first_of('.'));
 }
 
-uint128_t ConvertIpStringToUint128(const string &ipStr) {
-  struct in_addr ip_addr {};
-  inet_pton(AF_INET, ipStr.c_str(), &ip_addr);
-  return (uint128_t)ip_addr.s_addr;
-}
-
 bool GetIpStrListFromDnsCache(std::vector<std::string> &ipStrList,
                               DnsListType listType) {
   auto &dnsCacheList = dnsCacheListDataMap[listType];
-  if (dnsCacheList.isQuerying) {
+  if (!dnsCacheList.dataAccessMutex.try_lock()) {
     LOG_GENERAL(INFO, "Unable to obtain data from "
                           << dnsAddresses[listType]
                           << ", data are still being queried");
     return false;
   }
 
-  if (dnsCacheList.ipList.empty()) {
+  auto isEmptyCache = dnsCacheList.ipList.empty();
+
+  if (isEmptyCache) {
     LOG_GENERAL(INFO, "Dns cache is empty for " << dnsAddresses[listType]);
-    return false;
+  } else {
+    ipStrList = dnsCacheList.ipList;
   }
 
-  ipStrList = dnsCacheList.ipList;
-  return true;
+  dnsCacheList.dataAccessMutex.unlock();
+  return isEmptyCache;
 }
 
-bool GetPubKeyFromDnsCache(bytes &output, const std::string &ip,
+bool GetPubKeyFromDnsCache(bytes &output, const std::string &ipStr,
                            DnsListType listType) {
   auto &dnsCacheList = dnsCacheListDataMap[listType];
-  if (dnsCacheList.isQuerying) {
+  if (!dnsCacheList.dataAccessMutex.try_lock()) {
     LOG_GENERAL(INFO, "Unable to obtain PubKey for "
-                          << ip << ", data are still being queried");
+                          << ipStr << ", data are still being queried");
     return false;
   }
 
-  auto ipKey = ConvertIpStringToUint128(ip);
+  uint128_t ipKey;
+  if (!IPConverter::ToNumericalIPFromStr(ipStr, ipKey)) {
+    LOG_GENERAL(WARNING, "Unable to change IP to ipKey: " << ipKey);
+    return false;
+  }
   auto &pubKeyList = dnsCacheList.pubKeyList;
   auto itr = pubKeyList.find(ipKey);
 
-  if (itr == pubKeyList.end()) {
-    LOG_GENERAL(INFO, "Unable to find pubkey in cache for " << ip);
-    return false;
+  auto pubKeyNotFound = itr == pubKeyList.end();
+  if (pubKeyNotFound) {
+    LOG_GENERAL(INFO, "Unable to find pubkey in cache for " << ipStr);
+  } else {
+    output = itr->second;
   }
 
-  output = itr->second;
-  return true;
+  dnsCacheList.dataAccessMutex.unlock();
+
+  return pubKeyNotFound;
 }
