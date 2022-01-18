@@ -364,8 +364,6 @@ class Lookup : public Executable {
   void SendTxnPacketToShard(const uint32_t shardId, bool toDS,
                             bool afterSoftConfirmation = false);
 
-  void SetMultiplierToLatestNow();
-
   bool ProcessEntireShardingStructure();
   bool ProcessGetDSInfoFromSeed(const bytes& message, unsigned int offset,
                                 const Peer& from,

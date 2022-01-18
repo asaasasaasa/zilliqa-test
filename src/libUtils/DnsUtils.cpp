@@ -46,8 +46,6 @@ using DnsPubKeyListData = unordered_map<uint128_t, bytes>;
 
 struct DnsCacheList {
   mutex dataAccessMutex;
-  mutex queryWaitMutex;
-  condition_variable queryWaitCv;
 
   DnsIpListData ipList;
   DnsPubKeyListData pubKeyList;
@@ -259,7 +257,6 @@ void QueryDnsList(DnsListType listType) {
   }
 
   dataListCache.dataAccessMutex.unlock();
-  dataListCache.queryWaitCv.notify_all();
 }
 }  // namespace
 
@@ -282,21 +279,6 @@ void AttemptPopulateLookupsDnsCache() {
   QueryDnsList(DnsListType::UPPER_SEED);
   QueryDnsList(DnsListType::L2L_DATA_PROVIDERS);
   QueryDnsList(DnsListType::MULTIPLIERS);
-}
-
-void AttemptPopulateLookupsDnsCacheImmediately(DnsListType listType) {
-  LOG_MARKER();
-
-  DetachedFunction(1, QueryDnsList, listType);
-
-  // Timeout for result to go into cache
-  auto &dataListCache = dnsCacheListDataMap[listType];
-  unique_lock<mutex> lock(dataListCache.queryWaitMutex);
-  if (dataListCache.queryWaitCv.wait_for(
-          lock, std::chrono::milliseconds(QUERY_DNS_TIMEOUT_MILLISECONDS)) ==
-      std::cv_status::timeout) {
-    LOG_GENERAL(WARNING, "Time out while querying " << dnsAddresses[listType]);
-  }
 }
 
 string GetPubKeyUrl(const std::string &ip, const std::string &url) {

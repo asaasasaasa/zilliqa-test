@@ -34,8 +34,6 @@ void ShutDownDnsCacheList();
 
 void AttemptPopulateLookupsDnsCache();
 
-void AttemptPopulateLookupsDnsCacheImmediately(DnsListType listType);
-
 std::string GetPubKeyUrl(const std::string& ip, const std::string& url);
 
 bool GetIpStrListFromDnsCache(std::vector<std::string>& ipStrList,

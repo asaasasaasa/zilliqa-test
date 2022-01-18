@@ -5760,13 +5760,6 @@ void Lookup::SendTxnPacketToNodes(const uint32_t oldNumShards,
   }
 }
 
-void Lookup::SetMultiplierToLatestNow() {
-  if (QUERY_DNS_FOR_SEED) {
-    AttemptPopulateLookupsDnsCacheImmediately(DnsListType::MULTIPLIERS);
-    SetLookupNodes();
-  }
-}
-
 void Lookup::SetServerTrue() {
   if (!LOOKUP_NODE_MODE) {
     LOG_GENERAL(WARNING,

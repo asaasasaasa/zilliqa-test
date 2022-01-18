@@ -793,8 +793,6 @@ void DirectoryService::ProcessDSBlockConsensusWhenDone() {
       SendDSBlockToShardNodes(message, shards, my_shards_lo, my_shards_hi);
     };
 
-    m_mediator.m_lookup->SetMultiplierToLatestNow();
-
     DataSender::GetInstance().SendDataToOthers(
         *m_pendingDSBlock, *(m_mediator.m_DSCommittee), m_shards, {},
         m_mediator.m_lookup->GetLookupNodes(),
