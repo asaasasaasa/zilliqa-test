@@ -263,7 +263,9 @@ void Lookup::UpdateNodes(VectorOfNode& currentLocalNodes, unsigned int nodePort,
     LOG_GENERAL(INFO, "Updated Size: " << currentLocalNodes.size() << " for "
                                        << fallbackXmlType);
     return;  // Success
-  } else if (currentLocalNodes.empty()) {
+  }
+
+  if (currentLocalNodes.empty()) {
     // When dns query is off or failed
     // and our current nodes are empty, then use the config
     LOG_GENERAL(WARNING, "Falling back to obtain IP and Pubkey from config");

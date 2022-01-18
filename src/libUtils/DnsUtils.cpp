@@ -306,7 +306,7 @@ bool GetIpStrListFromDnsCache(std::vector<std::string> &ipStrList,
   }
 
   dnsCacheList.dataAccessMutex.unlock();
-  return isEmptyCache;
+  return !isEmptyCache;
 }
 
 bool GetPubKeyFromDnsCache(bytes &output, const std::string &ipStr,
@@ -335,5 +335,5 @@ bool GetPubKeyFromDnsCache(bytes &output, const std::string &ipStr,
 
   dnsCacheList.dataAccessMutex.unlock();
 
-  return pubKeyNotFound;
+  return !pubKeyNotFound;
 }
