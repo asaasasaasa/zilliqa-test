@@ -3245,8 +3245,8 @@ bool Lookup::ProcessSetTxBlockFromSeed(
         LOG_GENERAL(INFO,
                     "[TxBlockVerif]"
                         << "Stale blocks, will rejoin network, "
-                        << (m_rejoinInProgress ? "Rejoin already in progress"
-                                               : "Starting rejoin network"));
+                        << (m_rejoinInProgress ? "rejoin already in progress"
+                                               : "starting rejoin network"));
         // Should sync from S3
         if (LOOKUP_NODE_MODE && ARCHIVAL_LOOKUP) {
           m_rejoinInProgress = true;
@@ -4743,9 +4743,11 @@ void Lookup::RejoinAsNewLookup(bool fromLookup) {
     };
 
     auto checkForLookupSyncEligibility = [this, fromLookup]() -> bool {
+      // check if within FETCH_DS_BLOCK_LIMIT * NUM_FINAL_BLOCK_PER_POW
       if (m_mediator.m_currentEpochNum < GetFetchRangeLowerBound()) {
         return false;
       }
+
       return (fromLookup && MULTIPLIER_SYNC_MODE) ||
              SYNC_FROM_EXISTING_PERSISTENCE;
     };
@@ -4807,6 +4809,10 @@ bool Lookup::StopJsonRpcPort() {
   return true;
 }
 
+uint64_t Lookup::GetFetchRange() const {
+  return FETCH_DS_BLOCK_LIMIT * NUM_FINAL_BLOCK_PER_POW;
+}
+
 uint64_t Lookup::GetFetchRangeLowerBound() const {
   // gets the first block number for curr ds epoch
   // lower bound should be FETCH_DS_BLOCK_LIMIT * NUM_FINAL_BLOCK_PER_POW before
@@ -4814,9 +4820,7 @@ uint64_t Lookup::GetFetchRangeLowerBound() const {
       m_mediator.m_dsBlockChain.GetLastBlock().GetHeader().GetEpochNum();
 
   // prevent underflow for lower epochs
-  return FETCH_DS_BLOCK_LIMIT * NUM_FINAL_BLOCK_PER_POW > currEpochNum
-             ? 0
-             : currEpochNum - FETCH_DS_BLOCK_LIMIT * NUM_FINAL_BLOCK_PER_POW;
+  return GetFetchRange() > currEpochNum ? 0 : currEpochNum - GetFetchRange();
 }
 
 uint64_t Lookup::GetFetchRangeUpperBound() const {
