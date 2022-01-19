@@ -186,7 +186,8 @@ void QueryDnsList(DnsListType listType) {
   LOG_MARKER();
   if (isShuttingDown) return;
 
-  if (dnsAddresses[listType].empty()) {
+  auto url = dnsAddresses[listType];
+  if (url.empty()) {
     LOG_GENERAL(INFO, "DNS address is empty for type " << (int)listType);
     return;
   }
@@ -210,13 +211,6 @@ void QueryDnsList(DnsListType listType) {
   currentIpKeys.reserve(dataListCache.ipList.size());
 
   auto &pubKeyList = dataListCache.pubKeyList;
-  auto url = dnsAddresses[listType];
-
-  if (url.empty()) {
-    LOG_GENERAL(WARNING, "url is empty");
-    dataListCache.dataAccessMutex.unlock();
-    return;
-  }
 
   // Adding new pubkeys to our dns cache
   for (const auto &ipStr : dataListCache.ipList) {
@@ -231,11 +225,6 @@ void QueryDnsList(DnsListType listType) {
     if (pubKeyList.find(ipKey) != pubKeyList.end()) {
       // Already exists, don't need to query again, unlikely to change pubkey
       // for an ip
-      continue;
-    }
-
-    if (ipStr.empty()) {
-      LOG_GENERAL(WARNING, "Ip is empty");
       continue;
     }
 

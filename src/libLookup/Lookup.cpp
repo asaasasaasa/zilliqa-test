@@ -176,6 +176,7 @@ void Lookup::InitSync() {
 }
 
 void Lookup::SetLookupNodes(const VectorOfNode& lookupNodes) {
+  LOG_MARKER();  // To remove
   // Only used for random testing
   m_lookupNodes = lookupNodes;
   m_lookupNodesStatic = lookupNodes;
@@ -325,6 +326,8 @@ void Lookup::SetLookupNodes() {
                        multipliers.end());
 
   m_lookupNodesStatic = m_lookupNodes;
+
+  LOG_GENERAL(INFO, "Total lookup size: " << m_lookupNodesStatic.size());
 }
 
 void Lookup::SetGenesisWallets() {
