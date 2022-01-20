@@ -60,7 +60,10 @@ unordered_map<DnsListType, string> dnsAddresses;
 unordered_map<DnsListType, DnsCacheList> dnsCacheListDataMap;
 
 bool QueryIpStrListFromDns(DnsListType listType) {
+  LOG_GENERAL(INFO, "Test, to remove");
+
   LOG_MARKER();
+
   const auto &url = dnsAddresses[listType];
 
   if (url.empty()) {
