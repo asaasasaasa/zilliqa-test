@@ -747,9 +747,6 @@ const bool QUERY_DNS_FOR_SEED{
 const unsigned int QUERY_DNS_MAX_TRIES{
     ReadConstantNumeric("QUERY_DNS_MAX_TRIES", "node.node_discovery.")};
 
-const unsigned int QUERY_DNS_TIMEOUT_MILLISECONDS{ReadConstantNumeric(
-    "QUERY_DNS_TIMEOUT_MILLISECONDS", "node.node_discovery.")};
-
 const string L2L_DATA_PROVIDERS_DNS{
     ReadConstantString("l2l_data_providers_dns", "node.node_discovery.")};
 

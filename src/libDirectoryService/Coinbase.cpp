@@ -169,8 +169,6 @@ void DirectoryService::InitCoinbase() {
 
   const auto& epochNum = m_mediator.m_currentEpochNum;
 
-  LOG_GENERAL(INFO, "LookupNodesStatic size: " << vecLookup.size());
-
   // In VC case, if this wasn't cleared, it will accumulate the same epochNum
   // previous entries
   m_coinbaseRewardees[epochNum][CoinbaseReward::LOOKUP_REWARD].clear();
@@ -354,7 +352,6 @@ void DirectoryService::InitCoinbase() {
       if (shardId == CoinbaseReward::LOOKUP_REWARD) {
         for (const auto& pk : rewardees) {
           const auto& addr = Account::GetAddressFromPublicKey(pk);
-          LOG_GENERAL(INFO, "Addr: " << addr << ", pk: " << pk);
           if (!AccountStore::GetInstance().UpdateCoinbaseTemp(
                   addr, coinbaseAddress, reward_each_lookup)) {
             LOG_GENERAL(WARNING, "Could not reward " << addr << " - " << pk);

@@ -399,8 +399,7 @@
     </ds_accounts>
     <node_discovery>
         <QUERY_DNS_FOR_SEED>true</QUERY_DNS_FOR_SEED>
-        <QUERY_DNS_MAX_TRIES>1</QUERY_DNS_MAX_TRIES>
-        <QUERY_DNS_TIMEOUT_MILLISECONDS>100</QUERY_DNS_TIMEOUT_MILLISECONDS>
+        <QUERY_DNS_MAX_TRIES>5</QUERY_DNS_MAX_TRIES>
         <l2l_data_providers_dns/>
         <upper_seed_dns/>
         <multiplier_dns/>
